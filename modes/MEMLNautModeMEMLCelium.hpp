@@ -140,6 +140,8 @@ public:
 
     void analyse(stereosample_t) {}
 
+    AudioDriver::codec_config_t getCodecConfig() { return audioAppMEMLCelium.GetDriverConfig(); }
+
     void loopCore0() {}
 
 };

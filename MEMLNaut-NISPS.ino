@@ -5,7 +5,7 @@
 #define MEMLNAUT_INPUT_MODE InterfaceRL::INPUT_MODES::JOYSTICK
 
 //hardware
-#include "src/memllib/hardware/memlnaut/PSRAMManager.hpp"
+// #include "src/memllib/hardware/memlnaut/PSRAMManager.hpp"
 #include "src/memllib/utils/perf.hpp"
 #include "src/memllib/interface/MIDIInOut.hpp"
 #include "src/memllib/audio/AudioDriver.hpp"
@@ -31,6 +31,7 @@
 #include "modes/MEMLNautModeXIASRI.hpp"
 #include "modes/MEMLNautModeBreakOr.hpp"
 #include "modes/MEMLNautModeVerbFX.hpp"
+#include "modes/MEMLNautModeSaxFX.hpp"
 #include "modes/MEMLNautModeBunty.hpp"
 #include "modes/MEMLNautModeElysiamorfs.hpp"
 #include "modes/MEMLNautModeMEMLCelium.hpp"
@@ -40,12 +41,13 @@
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeVerbFX
-#define MEMLNAUT_MODE_TYPE MEMLNautModeBunty
+// #define MEMLNAUT_MODE_TYPE MEMLNautModeSaxFX
+// #define MEMLNAUT_MODE_TYPE MEMLNautModeBunty
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeBreakOr
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeElysiamorfs
 // #define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
 // #define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeMEMLCelium
+#define MEMLNAUT_MODE_TYPE MEMLNautModeMEMLCelium
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
 
@@ -97,13 +99,13 @@ volatile bool APP_SRAM interface_ready = false;
 void setup() {
   set_sys_clock_khz(AudioDriver::GetSysClockSpeed(), true);
 
-  if (PSRAMManager::init()) {
-    Serial.printf("PSRAM: %u MB @ %u MHz\n",
-                  PSRAMManager::size() / (1024 * 1024),
-                  PSRAMManager::psramClockMHz());
-  } else {
-    Serial.println("PSRAM: not detected");
-  }
+  // if (PSRAMManager::init()) {
+  //   Serial.printf("PSRAM: %u MB @ %u MHz\n",
+  //                 PSRAMManager::size() / (1024 * 1024),
+  //                 PSRAMManager::psramClockMHz());
+  // } else {
+  //   Serial.println("PSRAM: not detected");
+  // }
 
   bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_DMA_W_BITS | BUSCTRL_BUS_PRIORITY_DMA_R_BITS | BUSCTRL_BUS_PRIORITY_PROC1_BITS;
 
@@ -233,7 +235,7 @@ void setup1() {
   AudioDriver::SetBlockCallback(audio_block_callback);
 
   // Start audio driver
-  AudioDriver::Setup();
+  AudioDriver::Setup(currentMode->getCodecConfig());
 
   WRITE_VOLATILE(core_1_ready, true);
   while (!READ_VOLATILE(core_0_ready)) {

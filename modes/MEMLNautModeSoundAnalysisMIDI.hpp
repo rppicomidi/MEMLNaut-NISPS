@@ -86,6 +86,8 @@ public:
 
     }
 
+    AudioDriver::codec_config_t getCodecConfig() { return audioAppSoundAnalysisMIDI.GetDriverConfig(); }
+
     void loopCore0() {}
 
 };

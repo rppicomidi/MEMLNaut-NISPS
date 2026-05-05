@@ -81,6 +81,8 @@ public:
 
     }
 
+    AudioDriver::codec_config_t getCodecConfig() { return audioAppXIASRI.GetDriverConfig(); }
+
     void loopCore0() {}
 
 };

@@ -24,5 +24,6 @@ concept MEMLNautMode = requires(T proc) {
   // {proc.getNMIDICtrlOutputs()} -> std::same_as<size_t>;
   {proc.setupInterface()} -> std::same_as<void>;
   {proc.loopCore0()} -> std::same_as<void>;
+  {proc.getCodecConfig()} -> std::same_as<AudioDriver::codec_config_t>;
   requires std::same_as<decltype(T::kN_InputParams), const size_t>;
 };

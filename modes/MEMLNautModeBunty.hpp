@@ -99,6 +99,8 @@ public:
     __force_inline void processAnalysisParams() {
     }
 
+    AudioDriver::codec_config_t getCodecConfig() { return audioAppBunty.GetDriverConfig(); }
+
     void loopCore0() {
         // if (uartInput) uartInput->Poll();
     }

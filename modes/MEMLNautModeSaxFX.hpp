@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../src/memllib/interface/MIDIInOut.hpp"
-#include "./AudioApps/VerbFXAudioApp.hpp"
+#include "./AudioApps/SaxFXAudioApp.hpp"
 #include "MEMLNautMode.hpp"
 #include <memory>
 #include <array>
@@ -10,39 +10,40 @@
 #include "../src/memllib/audio/AudioDriver.hpp"
 #include "../src/memllib/examples/InterfaceRL.hpp"
 #include "../src/memllib/PicoDefs.hpp"
+#include "../XiasriAnalysis.hpp"
 
 
 
-class MEMLNautModeVerbFX {
+class MEMLNautModeSaxFX {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;  
+    constexpr static size_t kN_InputParams = XiasriAnalysis::kN_Params;  //ML
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
-    // XiasriAnalysis mlAnalysis{kSampleRate};
-    // SharedBuffer<float, XiasriAnalysis::kN_Params> machine_list_buffer;
+    XiasriAnalysis mlAnalysis{kSampleRate};
+    SharedBuffer<float, XiasriAnalysis::kN_Params> machine_list_buffer;
 
-    VerbFXAudioApp<> audioAppVerbFX;
-    std::array<String, VerbFXAudioApp<>::nVoiceSpaces> voiceSpaceList;
+    SaxFXAudioApp<> audioAppSaxFX;
+    std::array<String, SaxFXAudioApp<>::nVoiceSpaces> voiceSpaceList;
     std::shared_ptr<MIDIInOut> midi_interf;
     std::shared_ptr<BlockSelectView> enableView;
 
 
     void setupInterface() {
-        interface.setup(kN_InputParams, VerbFXAudioApp<>::kN_Params);
+        interface.setup(kN_InputParams, SaxFXAudioApp<>::kN_Params);
         interface.setRVX1Override([this](float value) {
-            audioAppVerbFX.setWetDryQueued(value);
+            audioAppSaxFX.setWetDryQueued(value);
         });
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);
-        interface.setModeInfo("verbfx", "VerbFX");
+        interface.setModeInfo("saxfx", "SaxFX");
         interfacePtr = make_non_owning(interface);
     }
 
     String getHelpTitle() {
-        return "VerbFX Mode";
+        return "Sax FX Mode";
     }
     
     __force_inline stereosample_t process(stereosample_t x) {
-        return audioAppVerbFX.Process(x);
+        return audioAppSaxFX.Process(x);
     }
 
     void setupMIDI(std::shared_ptr<MIDIInOut> new_midi_interf) {
@@ -58,14 +59,14 @@ public:
             TFT_BLUE, 2);
         enableView->SetOnSelectCallback([this](size_t id) {
             enableView->toggleAlt(id - 1);
-            queue_t& q = audioAppVerbFX.controlMessageQueue;
+            queue_t& q = audioAppSaxFX.controlMessageQueue;
             switch(id) {
-                case 1: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_FILTERBANK;    queue_try_add(&q, &msg); } break;
-                case 2: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_REVERB;        queue_try_add(&q, &msg); } break;
-                case 3: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_SHORT_DELAY;   queue_try_add(&q, &msg); } break;
-                case 4: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_MEDIUM_DELAY;  queue_try_add(&q, &msg); } break;
-                case 5: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_LONG_DELAY;    queue_try_add(&q, &msg); } break;
-                case 6: { auto msg = VerbFXAudioApp<>::controlMessages::MSG_ENABLE_DELAY_TO_REVERB; queue_try_add(&q, &msg); } break;
+                case 1: { auto msg = SaxFXAudioApp<>::controlMessages::MSG_ENABLE_FILTERBANK;    queue_try_add(&q, &msg); } break;
+                case 2: { auto msg = SaxFXAudioApp<>::controlMessages::MSG_ENABLE_REVERB;        queue_try_add(&q, &msg); } break;
+                case 3: { auto msg = SaxFXAudioApp<>::controlMessages::MSG_ENABLE_SHORT_DELAY;   queue_try_add(&q, &msg); } break;
+                case 4: { auto msg = SaxFXAudioApp<>::controlMessages::MSG_ENABLE_MEDIUM_DELAY;  queue_try_add(&q, &msg); } break;
+                case 5: { auto msg = SaxFXAudioApp<>::controlMessages::MSG_ENABLE_LONG_DELAY;    queue_try_add(&q, &msg); } break;
+                case 6: { auto msg = SaxFXAudioApp<>::controlMessages::MSG_ENABLE_DELAY_TO_REVERB; queue_try_add(&q, &msg); } break;
             }
         });
         MEMLNaut::Instance()->disp->AddView(enableView);
@@ -76,44 +77,44 @@ public:
         voiceSpaceSelectView->setOptions(voiceSpaceList);
         voiceSpaceSelectView->setNewVoiceCallback(
             [this](size_t idx) {
-                audioAppVerbFX.setVoiceSpace(idx);
+                audioAppSaxFX.setVoiceSpace(idx);
             });
     };
 
     void setupAudio(float sample_rate) {
-        audioAppVerbFX.Setup(sample_rate, interfacePtr);
-        voiceSpaceList = audioAppVerbFX.getVoiceSpaceNames();
+        audioAppSaxFX.Setup(sample_rate, interfacePtr);
+        voiceSpaceList = audioAppSaxFX.getVoiceSpaceNames();
         // Reinitialize XiasriAnalysis filters after maxiSettings is properly configured
-        // mlAnalysis.ReinitFilters();
+        mlAnalysis.ReinitFilters();
     }
 
     __force_inline void loop() {
-        audioAppVerbFX.loop();
+        audioAppSaxFX.loop();
     }
 
     __force_inline void analyse(stereosample_t x) {
-        // union {
-        //     XiasriAnalysis::parameters_t p;
-        //     float v[XiasriAnalysis::kN_Params];
-        // } param_u;
-        // param_u.p = mlAnalysis.Process(x.L + x.R);
-        // // Write params into shared_buffer
-        // machine_list_buffer.writeNonBlocking(param_u.v, XiasriAnalysis::kN_Params);
+        union {
+            XiasriAnalysis::parameters_t p;
+            float v[XiasriAnalysis::kN_Params];
+        } param_u;
+        param_u.p = mlAnalysis.Process(x.L + x.R);
+        // Write params into shared_buffer
+        machine_list_buffer.writeNonBlocking(param_u.v, XiasriAnalysis::kN_Params);
     }
 
     __force_inline void processAnalysisParams() {
-        // // Read SharedBuffer
-        // std::vector<float> mlist_params(XiasriAnalysis::kN_Params, 0);
-        // machine_list_buffer.readNonBlocking(mlist_params);
-        // // Send parameters to RL interface
-        // interface.readAnalysisParameters(mlist_params);
+        // Read SharedBuffer
+        std::vector<float> mlist_params(XiasriAnalysis::kN_Params, 0);
+        machine_list_buffer.readNonBlocking(mlist_params);
+        // Send parameters to RL interface
+        interface.readAnalysisParameters(mlist_params);
         // PERIODIC_RUN(
         //     Serial.printf("%f %f %f\n", mlist_params[0], mlist_params[1], mlist_params[2]);
         //     , 100);
 
     }
     
-    AudioDriver::codec_config_t getCodecConfig() { return audioAppVerbFX.GetDriverConfig(); }
+    AudioDriver::codec_config_t getCodecConfig() { return audioAppSaxFX.GetDriverConfig(); }
 
     void loopCore0() {}
 

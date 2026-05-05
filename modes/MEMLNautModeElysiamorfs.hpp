@@ -104,6 +104,8 @@ public:
 
     void analyse(stereosample_t) {}
 
+    AudioDriver::codec_config_t getCodecConfig() { return audioAppElysiamorfs.GetDriverConfig(); }
+
     float i2cValues[8];
     void loopCore0() {
         // PERIODIC_RUN_US(

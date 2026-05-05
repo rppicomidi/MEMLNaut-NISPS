@@ -116,6 +116,8 @@ public:
 
     void analyse(stereosample_t) {}
 
+    AudioDriver::codec_config_t getCodecConfig() { return audioAppPAFSynth.GetDriverConfig(); }
+
     void loopCore0() {}
 
 };
