@@ -18,12 +18,12 @@
 
 #include "RatioSeqEngine.hpp"
 
-static constexpr size_t kMEMLCeliumNSequences = 2;
+static constexpr size_t kMEMLCeliumNSequences = 3;
 
 // MIDI notes assigned to each sequencer index
 // static constexpr uint8_t kMEMLCeliumSeqNotes[kMEMLCeliumNSequences] = {60};
 
-template<size_t NPARAMS=56>
+template<size_t NPARAMS=83>
 class MEMLCeliumAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
@@ -36,18 +36,22 @@ public:
     static constexpr uint32_t kFocusSeq = (1u << 0);
     static constexpr uint32_t kFocusSyn = (1u << 1);
 
-    // Per-param group membership: params 0-13 = sequencer, 14-55 = synthesis
+    // Per-param group membership: params 0-20 = sequencer, 21-82 = synthesis
     static constexpr std::array<uint32_t, NPARAMS> kParamGroupMask = {
-        // 0-13: sequencer (14 entries)
+        // 0-20: sequencer (21 entries — 3 sequences × 7 params)
         kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq,
         kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq,
-        // 14-55: synthesis (42 entries)
+        kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq,
+        // 21-82: synthesis V0 + V1 + V2 (62 entries)
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
         kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
     };
 
     std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
@@ -188,9 +192,29 @@ public:
         v1 = ((1.0 - rmGain) * v1) + (rm * rmGain);
 
         v1 = v1 * v1Envval;
-        /////
 
-        float mix = v0 + v1;
+        //v2 — hihat-biased PAF voice
+        float v2Envval = v2AmpEnv.play();
+        float v2PitchEnvVal = v2PitchEnv.play() * v2PitchEmph;
+
+        float v2freq0 = v2BaseFreq + (v2PitchEnvVal * v2BaseFreq);
+        v2paf0.play(x1, 1, v2freq0, v2freq0 + (v2paf0_cf * v2freq0), v2paf0_bw, 0, 0, v2paf0_shift, 0);
+        float v2p0 = *x1 * v2p0Gain;
+
+        const float v2freq1 = v2freq0 * v2Detune1;
+        v2paf1.play(x1, 1, v2freq1, v2freq1 + (v2paf1_cf * v2freq1), v2paf1_bw, 0, 0, v2paf1_shift, 1);
+        const float v2p1 = *x1 * v2p1Gain;
+
+        const float v2freq2 = v2freq1 * v2Detune2;
+        v2paf2.play(x1, 1, v2freq2, v2freq2 + (v2paf2_cf * v2freq2), v2paf2_bw, 0, 0, v2paf2_shift, 1);
+        const float v2p2 = *x1 * v2p2Gain;
+
+        float v2 = v2p0 + v2p1 + v2p2;
+        const float v2rm = v2p0 * v2p1 * v2p2;
+        v2 = ((1.f - v2rmGain) * v2) + (v2rm * v2rmGain);
+        v2 = v2 * v2Envval;
+
+        float mix = v0 + v1 + v2;
 
         float shape = sinf(mix * TWOPI);
         shape = sinf(((shape * TWOPI) * sineShapeGain) + sineShapeASym);
@@ -234,6 +258,15 @@ public:
         v1paf2.init();
         v1paf2.setsr(maxiSettings::getSampleRate(), 1);
 
+        v2paf0.init();
+        v2paf0.setsr(maxiSettings::getSampleRate(), 1);
+
+        v2paf1.init();
+        v2paf1.setsr(maxiSettings::getSampleRate(), 1);
+
+        v2paf2.init();
+        v2paf2.setsr(maxiSettings::getSampleRate(), 1);
+
         arpFreq = frequencies[0];
         envamp=1.f;
 
@@ -241,6 +274,8 @@ public:
         v0PitchEnv.setup(10,500,0.f,100,sampleRatef);
         v1AmpEnv.setup(500,500,0.8,1000,sampleRatef);
         v1PitchEnv.setup(10,500,0.f,100,sampleRatef);
+        v2AmpEnv.setup(1,50,0.f,20,sampleRatef);
+        v2PitchEnv.setup(1,30,0.f,10,sampleRatef);
 
         lowBoost.set(maxiBiquad::PEAK, 70.f, 0.707f, 6.f);
         midBoost.set(maxiBiquad::PEAK, 800.f, 0.707f, 6.f);
@@ -264,7 +299,11 @@ public:
                     break;
                 case 1:
                     v1AmpEnv.trigger(noteVel);
-                    v1PitchEnv.trigger(1.0);                    
+                    v1PitchEnv.trigger(1.0);
+                    break;
+                case 2:
+                    v2AmpEnv.trigger(noteVel);
+                    v2PitchEnv.trigger(1.0);
                     break;
             }
         };
@@ -275,12 +314,15 @@ public:
             switch(seqIdx) {
                 case 0:
                     v0AmpEnv.release();
-                    v0PitchEnv.release();                    
-
+                    v0PitchEnv.release();
                     break;
                 case 1:
                     v1AmpEnv.release();
                     v1PitchEnv.release();
+                    break;
+                case 2:
+                    v2AmpEnv.release();
+                    v2PitchEnv.release();
                     break;
             }
         };
@@ -326,7 +368,7 @@ public:
         detune2 = 1.02f; 
         // detune3 = 1.2f; 
 
-        size_t paramIdx = 14;  // 0-13 reserved for seqEngine (2 sequencers × 7 params)
+        size_t paramIdx = 21;  // 0-20 reserved for seqEngine (3 sequencers × 7 params)
         auto sqParam = [&]() { const float p = params[paramIdx++]; return p * p; };
 
         baseFreq = 60.f + (params[paramIdx++] * 10.f);
@@ -406,6 +448,38 @@ public:
 
         v1PitchEmph = params[paramIdx++] * 10.f;
 
+        //v2 — hihat-biased PAF voice
+        v2p0Gain = 1.f;
+        v2p1Gain = 1.f;
+        v2p2Gain = 1.f;
+
+        v2BaseFreq = 1000.f + (params[paramIdx++] * 7000.f);   // 1–8 kHz
+        v2Detune1 = 1.0f + (params[paramIdx++] * 3.0f);        // 1–4 (inharmonic)
+        v2Detune2 = 1.0f + (params[paramIdx++] * 3.0f);
+
+        v2paf0_cf = params[paramIdx++] * 3.f;
+        v2paf1_cf = params[paramIdx++] * 3.f;
+        v2paf2_cf = params[paramIdx++] * 3.f;
+
+        v2paf0_bw = 100.f + (params[paramIdx++] * 900.f);      // high BW for noise content
+        v2paf1_bw = 100.f + (params[paramIdx++] * 900.f);
+        v2paf2_bw = 100.f + (params[paramIdx++] * 900.f);
+
+        v2paf0_shift = -200.f + (params[paramIdx++] * 400.f);
+        v2paf1_shift = -200.f + (params[paramIdx++] * 400.f);
+        v2paf2_shift = -200.f + (params[paramIdx++] * 400.f);
+
+        v2AmpEnv.setup(0.01f + (params[paramIdx++] * 0.1f),
+            0.5f + sqParam() * 50.f,
+            params[paramIdx++] * 0.1f, 1.f + sqParam() * 50.f, sampleRatef);
+
+        v2PitchEnv.setup(0.01f + (params[paramIdx++] * 1.f),
+            0.5f + sqParam() * 30.f,
+            0.f, 0.1f, sampleRatef);
+
+        v2PitchEmph = params[paramIdx++] * 5.f;
+        v2rmGain = params[paramIdx++];                          // ring mod for metallic texture
+
         // currentVoiceSpace(params);
     }
 
@@ -424,10 +498,13 @@ protected:
     maxiPAFOperator v1paf1;
     maxiPAFOperator v1paf2;
 
+    maxiPAFOperator v2paf0;
+    maxiPAFOperator v2paf1;
+    maxiPAFOperator v2paf2;
 
     maxiOsc pulse;
 
-    ADSRLite v0AmpEnv, v0PitchEnv, v1AmpEnv, v1PitchEnv;
+    ADSRLite v0AmpEnv, v0PitchEnv, v1AmpEnv, v1PitchEnv, v2AmpEnv, v2PitchEnv;
 
     float frame=0;
 
@@ -435,9 +512,11 @@ protected:
 
     float p0Gain=1.f, p1Gain = 1.f, p2Gain=1.f, p3Gain=1.f;
     float v1p0Gain=1.f, v1p1Gain=1.f, v1p2Gain=1.f;
+    float v2p0Gain=1.f, v2p1Gain=1.f, v2p2Gain=1.f;
 
     float v0PitchEmph = 1.f;
     float v1PitchEmph = 1.f;
+    float v2PitchEmph = 1.f;
 
     float paf0_freq = 100;
     float paf1_freq = 100;
@@ -481,8 +560,12 @@ protected:
     float v1paf1_shift = 0;
     float v1paf2_shift = 0;
 
+    float v2paf0_cf = 1.f, v2paf1_cf = 1.5f, v2paf2_cf = 2.f;
+    float v2paf0_bw = 500.f, v2paf1_bw = 800.f, v2paf2_bw = 600.f;
+    float v2paf0_shift = 0.f, v2paf1_shift = 0.f, v2paf2_shift = 0.f;
 
     float rmGain = 0.f;
+    float v2rmGain = 0.5f;
 
     float sineShapeGain=0.1;
     float sineShapeASym = 0.f;
@@ -502,6 +585,10 @@ protected:
 
     float v1Detune1 = 1.5;
     float v1Detune2 = 2.1;
+
+    float v2BaseFreq = 3000.f;
+    float v2Detune1 = 1.5f;
+    float v2Detune2 = 2.1f;
 
     maxiOsc phasorOsc;
     maxiTrigger zxdetect;

@@ -98,7 +98,7 @@ public:
             focusManager.setFocus(newMask, interface.getLastAction());
             focusView->toggleAlt(groupIdx);
         });
-        MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, focusView);
+        MEMLNaut::Instance()->disp->AddView(focusView);
 
     //     std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
     //     voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
