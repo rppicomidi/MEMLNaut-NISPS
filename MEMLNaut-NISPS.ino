@@ -15,39 +15,65 @@
 
 //sound
 #include "src/memllib/audio/AudioAppBase.hpp"
-#include "PAFSynthAudioApp.hpp"
-#include "ChannelStripAudioApp.hpp"
 
 //interface
 #include "src/memllib/hardware/memlnaut/display/XYPadView.hpp"
 #include "src/memllib/hardware/memlnaut/display/MessageView.hpp"
 #include "src/memllib/hardware/memlnaut/display/VoiceSpaceSelectView.hpp"
 
-//modes
+//modes — uncomment exactly ONE to select the active mode:
+// #define MODE_PAFSYNTH
+// #define MODE_CHANNELSTRIP
+// #define MODE_SOUNDANALYSISMIDI
+// #define MODE_XIASRI
+// #define MODE_BREAKOR
+// #define MODE_VERBFX
+// #define MODE_SAXFX
+// #define MODE_BUNTY
+// #define MODE_ELYSIAMORFS
+#define MODE_MEMLCELIUM
+
 #include "modes/MEMLNautMode.hpp"
-#include "modes/MEMLNautModePAFSynth.hpp"
-#include "modes/MEMLNautModeChannelStrip.hpp"
-#include "modes/MEMLNautModeSoundAnalysisMIDI.hpp"
-#include "modes/MEMLNautModeXIASRI.hpp"
-#include "modes/MEMLNautModeBreakOr.hpp"
-#include "modes/MEMLNautModeVerbFX.hpp"
-#include "modes/MEMLNautModeSaxFX.hpp"
-#include "modes/MEMLNautModeBunty.hpp"
-#include "modes/MEMLNautModeElysiamorfs.hpp"
-#include "modes/MEMLNautModeMEMLCelium.hpp"
-
-//hook up the memlnaut mode
-
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeVerbFX
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeSaxFX
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeBunty
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeBreakOr
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeElysiamorfs
-// #define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
-// #define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
-#define MEMLNAUT_MODE_TYPE MEMLNautModeMEMLCelium
+#ifdef MODE_PAFSYNTH
+  #include "modes/MEMLNautModePAFSynth.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModePAFSynth
+#endif
+#ifdef MODE_CHANNELSTRIP
+  #include "modes/MEMLNautModeChannelStrip.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeChannelStrip
+#endif
+#ifdef MODE_SOUNDANALYSISMIDI
+  #include "modes/MEMLNautModeSoundAnalysisMIDI.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeSoundAnalysisMIDI
+#endif
+#ifdef MODE_XIASRI
+  #include "modes/MEMLNautModeXIASRI.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeXIASRI
+#endif
+#ifdef MODE_BREAKOR
+  #include "modes/MEMLNautModeBreakOr.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeBreakOr
+#endif
+#ifdef MODE_VERBFX
+  #include "modes/MEMLNautModeVerbFX.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeVerbFX
+#endif
+#ifdef MODE_SAXFX
+  #include "modes/MEMLNautModeSaxFX.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeSaxFX
+#endif
+#ifdef MODE_BUNTY
+  #include "modes/MEMLNautModeBunty.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeBunty
+#endif
+#ifdef MODE_ELYSIAMORFS
+  #include "modes/MEMLNautModeElysiamorfs.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeElysiamorfs
+#endif
+#ifdef MODE_MEMLCELIUM
+  #include "modes/MEMLNautModeMEMLCelium.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeMEMLCelium
+#endif
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
 
