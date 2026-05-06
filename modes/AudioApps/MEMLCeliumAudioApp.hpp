@@ -35,23 +35,56 @@ public:
     // Focus group bitmasks
     static constexpr uint32_t kFocusSeq = (1u << 0);
     static constexpr uint32_t kFocusSyn = (1u << 1);
+    static constexpr uint32_t kFocusEnv = (1u << 2);
+    static constexpr uint32_t kFocusV0  = (1u << 3);
+    static constexpr uint32_t kFocusV1  = (1u << 4);
+    static constexpr uint32_t kFocusV2  = (1u << 5);
 
-    // Per-param group membership: params 0-20 = sequencer, 21-82 = synthesis
+    // Per-param group membership
     static constexpr std::array<uint32_t, NPARAMS> kParamGroupMask = {
-        // 0-20: sequencer (21 entries — 3 sequences × 7 params)
-        kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq,
-        kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq,
-        kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq, kFocusSeq,
-        // 21-82: synthesis V0 + V1 + V2 (62 entries)
-        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
-        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
-        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
-        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
-        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
-        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
-        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
-        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
-        kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn, kFocusSyn,
+        // 0-6: seq V0 (7)
+        kFocusSeq|kFocusV0, kFocusSeq|kFocusV0, kFocusSeq|kFocusV0, kFocusSeq|kFocusV0,
+        kFocusSeq|kFocusV0, kFocusSeq|kFocusV0, kFocusSeq|kFocusV0,
+        // 7-13: seq V1 (7)
+        kFocusSeq|kFocusV1, kFocusSeq|kFocusV1, kFocusSeq|kFocusV1, kFocusSeq|kFocusV1,
+        kFocusSeq|kFocusV1, kFocusSeq|kFocusV1, kFocusSeq|kFocusV1,
+        // 14-20: seq V2 (7)
+        kFocusSeq|kFocusV2, kFocusSeq|kFocusV2, kFocusSeq|kFocusV2, kFocusSeq|kFocusV2,
+        kFocusSeq|kFocusV2, kFocusSeq|kFocusV2, kFocusSeq|kFocusV2,
+        // 21-32: V0 spectral — baseFreq, cf×3, bw×3, vib, vfr, shift×3 (12)
+        kFocusSyn|kFocusV0, kFocusSyn|kFocusV0, kFocusSyn|kFocusV0, kFocusSyn|kFocusV0,
+        kFocusSyn|kFocusV0, kFocusSyn|kFocusV0, kFocusSyn|kFocusV0,
+        kFocusSyn|kFocusV0, kFocusSyn|kFocusV0,
+        kFocusSyn|kFocusV0, kFocusSyn|kFocusV0, kFocusSyn|kFocusV0,
+        // 33-39: V0 envelopes — v0AmpEnv ADSR, v0PitchEnv AD, v0PitchEmph (7)
+        kFocusSyn|kFocusEnv|kFocusV0, kFocusSyn|kFocusEnv|kFocusV0,
+        kFocusSyn|kFocusEnv|kFocusV0, kFocusSyn|kFocusEnv|kFocusV0,
+        kFocusSyn|kFocusEnv|kFocusV0, kFocusSyn|kFocusEnv|kFocusV0,
+        kFocusSyn|kFocusEnv|kFocusV0,
+        // 40-43: V0 shape/effects — sineShape×3, rmGain (4)
+        kFocusSyn|kFocusV0, kFocusSyn|kFocusV0, kFocusSyn|kFocusV0, kFocusSyn|kFocusV0,
+        // 44-55: V1 spectral — v1BaseFreq, detune×2, cf×3, bw×3, shift×3 (12)
+        kFocusSyn|kFocusV1, kFocusSyn|kFocusV1, kFocusSyn|kFocusV1,
+        kFocusSyn|kFocusV1, kFocusSyn|kFocusV1, kFocusSyn|kFocusV1,
+        kFocusSyn|kFocusV1, kFocusSyn|kFocusV1, kFocusSyn|kFocusV1,
+        kFocusSyn|kFocusV1, kFocusSyn|kFocusV1, kFocusSyn|kFocusV1,
+        // 56-62: V1 envelopes — v1AmpEnv ADSR, v1PitchEnv AD, v1PitchEmph (7)
+        kFocusSyn|kFocusEnv|kFocusV1, kFocusSyn|kFocusEnv|kFocusV1,
+        kFocusSyn|kFocusEnv|kFocusV1, kFocusSyn|kFocusEnv|kFocusV1,
+        kFocusSyn|kFocusEnv|kFocusV1, kFocusSyn|kFocusEnv|kFocusV1,
+        kFocusSyn|kFocusEnv|kFocusV1,
+        // 63-74: V2 spectral — v2BaseFreq, detune×2, cf×3, bw×3, shift×3 (12)
+        kFocusSyn|kFocusV2, kFocusSyn|kFocusV2, kFocusSyn|kFocusV2,
+        kFocusSyn|kFocusV2, kFocusSyn|kFocusV2, kFocusSyn|kFocusV2,
+        kFocusSyn|kFocusV2, kFocusSyn|kFocusV2, kFocusSyn|kFocusV2,
+        kFocusSyn|kFocusV2, kFocusSyn|kFocusV2, kFocusSyn|kFocusV2,
+        // 75-81: V2 envelopes — v2AmpEnv ADSR, v2PitchEnv AD, v2PitchEmph (7)
+        kFocusSyn|kFocusEnv|kFocusV2, kFocusSyn|kFocusEnv|kFocusV2,
+        kFocusSyn|kFocusEnv|kFocusV2, kFocusSyn|kFocusEnv|kFocusV2,
+        kFocusSyn|kFocusEnv|kFocusV2, kFocusSyn|kFocusEnv|kFocusV2,
+        kFocusSyn|kFocusEnv|kFocusV2,
+        // 82: V2 ring mod (1)
+        kFocusSyn|kFocusV2,
     };
 
     std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
@@ -61,6 +94,7 @@ public:
     RatioSeqEngine<kMEMLCeliumNSequences> seqEngine;
 
     queue_t sequencerControlQueue;
+    queue_t bpmControlQueue;
 
     std::array<String, nVoiceSpaces> getVoiceSpaceNames() {
         std::array<String, nVoiceSpaces> names;
@@ -117,6 +151,7 @@ public:
         // currentVoiceSpace = voiceSpaces[0].mappingFunction;
 
         queue_init(&sequencerControlQueue, sizeof(int), 1);
+        queue_init(&bpmControlQueue, sizeof(float), 1);
         queue_init(&qMIDINoteOn, sizeof(uint8_t)*2, 1);
         queue_init(&qMIDINoteOff, sizeof(uint8_t)*2, 1);
     };
@@ -334,20 +369,10 @@ public:
 
     size_t currNote=0;
     void loop() override {
-        // uint8_t midimsg[2];
-        // if (firstParamsReceived && queue_try_remove(&qMIDINoteOn, &midimsg)) {
-        //     baseFreq = 80.f;
-        //     noteVel = midimsg[1] / 127.0f;
-        //     noteVel = noteVel * noteVel;
-        //     newNote = true;
-        //     env.trigger(noteVel);
-        //     currNote = midimsg[0];
-        // }
-        // if (firstParamsReceived && queue_try_remove(&qMIDINoteOff, &midimsg)) {
-        //     if (currNote == midimsg[0]) {
-        //         env.release();
-        //     }
-        // }
+        float newBPM;
+        if (queue_try_remove(&bpmControlQueue, &newBPM)) {
+            seqEngine.updateBPM(newBPM);
+        }
         AudioAppBase<NPARAMS>::loop();
     }
 

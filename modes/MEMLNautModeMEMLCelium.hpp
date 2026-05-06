@@ -24,30 +24,39 @@ public:
 
     bool sequencerPlaying = false;
 
-    FocusManager<MEMLCeliumAudioApp<>::kN_Params, 2> focusManager;
+    FocusManager<MEMLCeliumAudioApp<>::kN_Params, 6> focusManager;
 
 
     void setupInterface() {
         interface.setup(kN_InputParams, MEMLCeliumAudioApp<>::kN_Params);
+
+        interface.setRVX1Override([this](float value) {
+            float bpm = 30.f + value * 170.f;
+            queue_try_add(&audioAppMEMLCelium.bpmControlQueue, &bpm);
+        });
+
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("memlcelium", "MEMLCelium");
         interfacePtr = make_non_owning(interface);
 
         focusManager.setGroupName(0, "Seq");
         focusManager.setGroupName(1, "Synth");
+        focusManager.setGroupName(2, "Env");
+        focusManager.setGroupName(3, "V1");
+        focusManager.setGroupName(4, "V2");
+        focusManager.setGroupName(5, "V3");
         focusManager.setParamGroups(MEMLCeliumAudioApp<>::kParamGroupMask);
         interface.paramTransformHook = [this](std::vector<float>& p) {
             focusManager.applyInPlace(p);
         };
 
-        MEMLNaut::Instance()->setTogA2Callback([this](bool state) { // scr_ref no longer captured directly
+        MEMLNaut::Instance()->setTogA2Callback([this](bool state) {
             Serial.println(state ? "TogA2 ON" : "TogA2 OFF");
             if (state) {
                 sequencerPlaying = !sequencerPlaying;
                 queue_try_add(&audioAppMEMLCelium.sequencerControlQueue, &sequencerPlaying);
             }
- 
-        });        
+        });
     }
 
     String getHelpTitle() {
@@ -89,8 +98,8 @@ public:
     void addViews() {
         // Focus screen — select which parameter groups are live
         auto focusView = std::make_shared<BlockSelectView>(
-            "Focus", TFT_CYAN, 2, 120, 70, TFT_BLACK,
-            std::vector<String>{"Seq", "Synth"}, TFT_DARKGREY, 2);
+            "Focus", TFT_CYAN, 6, 80, 70, TFT_BLACK,
+            std::vector<String>{"Seq", "Synth", "Env", "V1", "V2", "V3"}, TFT_DARKGREY, 2);
 
         focusView->SetOnSelectCallback([this, focusView](size_t id) {
             size_t groupIdx = id - 1;
@@ -98,7 +107,7 @@ public:
             focusManager.setFocus(newMask, interface.getLastAction());
             focusView->toggleAlt(groupIdx);
         });
-        MEMLNaut::Instance()->disp->AddView(focusView);
+        MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
 
     //     std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
     //     voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
