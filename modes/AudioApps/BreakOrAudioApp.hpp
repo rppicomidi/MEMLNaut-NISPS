@@ -28,6 +28,26 @@ public:
     static constexpr size_t kN_Params = NPARAMS;
     static constexpr size_t nVoiceSpaces=0;
 
+    static constexpr uint32_t kFocusS0 = (1u << 0);
+    static constexpr uint32_t kFocusS1 = (1u << 1);
+    static constexpr uint32_t kFocusS2 = (1u << 2);
+    static constexpr uint32_t kFocusS3 = (1u << 3);
+    static constexpr uint32_t kFocusS4 = (1u << 4);
+    static constexpr uint32_t kFocusS5 = (1u << 5);
+    static constexpr uint32_t kFocusS6 = (1u << 6);
+    static constexpr uint32_t kFocusS7 = (1u << 7);
+
+    static constexpr std::array<uint32_t, NPARAMS> kParamGroupMask = {
+        kFocusS0, kFocusS0, kFocusS0, kFocusS0, kFocusS0, kFocusS0, kFocusS0,  // 0-6
+        kFocusS1, kFocusS1, kFocusS1, kFocusS1, kFocusS1, kFocusS1, kFocusS1,  // 7-13
+        kFocusS2, kFocusS2, kFocusS2, kFocusS2, kFocusS2, kFocusS2, kFocusS2,  // 14-20
+        kFocusS3, kFocusS3, kFocusS3, kFocusS3, kFocusS3, kFocusS3, kFocusS3,  // 21-27
+        kFocusS4, kFocusS4, kFocusS4, kFocusS4, kFocusS4, kFocusS4, kFocusS4,  // 28-34
+        kFocusS5, kFocusS5, kFocusS5, kFocusS5, kFocusS5, kFocusS5, kFocusS5,  // 35-41
+        kFocusS6, kFocusS6, kFocusS6, kFocusS6, kFocusS6, kFocusS6, kFocusS6,  // 42-48
+        kFocusS7, kFocusS7, kFocusS7, kFocusS7, kFocusS7, kFocusS7, kFocusS7,  // 49-55
+    };
+
     queue_t bpmQueue;
     queue_t sequencerControlQueue;
     queue_t i2cOutQueue;

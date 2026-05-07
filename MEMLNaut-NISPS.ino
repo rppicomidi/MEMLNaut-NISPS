@@ -1,6 +1,6 @@
 //machine config
 
-#define JOYSTICK_IS_4D false
+#define JOYSTICK_IS_4D true
 #define MEMLNAUT_ANALOG_INPUTS 3 + (JOYSTICK_IS_4D ? 1 : 0)
 #define MEMLNAUT_INPUT_MODE InterfaceRL::INPUT_MODES::JOYSTICK
 
@@ -26,12 +26,12 @@
 // #define MODE_CHANNELSTRIP
 // #define MODE_SOUNDANALYSISMIDI
 // #define MODE_XIASRI
-// #define MODE_BREAKOR
+#define MODE_BREAKOR
 // #define MODE_VERBFX
 // #define MODE_SAXFX
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
-#define MODE_MEMLCELIUM
+// #define MODE_MEMLCELIUM
 
 #include "modes/MEMLNautMode.hpp"
 #ifdef MODE_PAFSYNTH

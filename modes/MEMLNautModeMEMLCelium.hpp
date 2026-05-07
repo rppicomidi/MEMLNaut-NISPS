@@ -98,8 +98,8 @@ public:
     void addViews() {
         // Focus screen — select which parameter groups are live
         auto focusView = std::make_shared<BlockSelectView>(
-            "Focus", TFT_CYAN, 6, 80, 70, TFT_BLACK,
-            std::vector<String>{"Seq", "Synth", "Env", "V1", "V2", "V3"}, TFT_DARKGREY, 2);
+            "Focus", TFT_DARKGREY, 6, 80, 70, TFT_WHITE,
+            std::vector<String>{"Seq", "Synth", "Env", "Voice 1", "Voice 2", "Voice 3"}, TFT_GREENYELLOW, 2);
 
         focusView->SetOnSelectCallback([this, focusView](size_t id) {
             size_t groupIdx = id - 1;

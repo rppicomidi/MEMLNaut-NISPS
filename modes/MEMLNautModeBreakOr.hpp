@@ -12,6 +12,8 @@
 #include <memory>
 #include <array>
 #include "../src/memllib/interface/USeqI2C.hpp"
+#include "../src/memllib/audio/FocusManager.hpp"
+#include "../src/memllib/hardware/memlnaut/display/BlockSelectView.hpp"
 
 
 class MEMLNautModeBreakOr {
@@ -19,18 +21,35 @@ public:
     constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;  
 
     USeqI2C i2cOut;
+    FocusManager<BreakOrAudioApp<>::kN_Params, 8> focusManager;
     inline static BreakOrAudioApp<> audioAppBreakOr;
     std::array<String, BreakOrAudioApp<>::nVoiceSpaces> voiceSpaceList;
 
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
 
-    BreakOrAudioApp<>::SequencerClockModes clockMode = BreakOrAudioApp<>::MIDI_CLOCK;
+    BreakOrAudioApp<>::SequencerClockModes clockMode = BreakOrAudioApp<>::INTERNAL;
 
     bool sequencerPlaying = false;
 
     void setupInterface() {
         interface.setup(kN_InputParams, BreakOrAudioApp<>::kN_Params);
+
+        interface.setRVX1Override([this](float value) {
+            if (clockMode == BreakOrAudioApp<>::INTERNAL) {
+                float bpm = 30.f + value * 170.f;
+                queue_try_add(&audioAppBreakOr.bpmQueue, &bpm);
+            }
+        });
+
+        for (size_t i = 0; i < 8; i++) {
+            focusManager.setGroupName(i, "S" + String(i + 1));
+        }
+        focusManager.setParamGroups(BreakOrAudioApp<>::kParamGroupMask);
+        interface.paramTransformHook = [this](std::vector<float>& p) {
+            focusManager.applyInPlace(p);
+        };
+
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("breakor", "BreakOr");
         interfacePtr = make_non_owning(interface);
@@ -59,11 +78,6 @@ public:
         audioAppBreakOr.Setup(sample_rate, interfacePtr, clockMode);
         voiceSpaceList = audioAppBreakOr.getVoiceSpaceNames();
         audioAppBreakOr.setupMIDI(midi_interf);
-        MEMLNaut::Instance()->setRVGain1Callback([this](float value) {
-            if (clockMode == BreakOrAudioApp<>::INTERNAL) {
-                queue_try_add(&audioAppBreakOr.bpmQueue, &value);
-            }
-        }, 0); // Set threshold to 0 to trigger on any change
 
     }
 
@@ -98,17 +112,18 @@ public:
     }
 
     void addViews() {
-        // std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
-        // voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
+        auto focusView = std::make_shared<BlockSelectView>(
+            "Focus", TFT_DARKGREY, 8, 60, 50, TFT_WHITE,
+            std::vector<String>{"S1","S2","S3","S4","S5","S6","S7","S8"},
+            TFT_GREENYELLOW, 2);
 
-        // MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, voiceSpaceSelectView);
-        // voiceSpaceSelectView->setOptions(voiceSpaceList);  //set by core 1 on startup
-        // voiceSpaceSelectView->setNewVoiceCallback(
-        //     [this](size_t idx) {
-        //         audioAppPAFSynth.setVoiceSpace(idx);
-        //     });
-
-
+        focusView->SetOnSelectCallback([this, focusView](size_t id) {
+            size_t groupIdx = id - 1;
+            uint32_t newMask = focusManager.getSelectedMask() ^ (1u << groupIdx);
+            focusManager.setFocus(newMask, interface.getLastAction());
+            focusView->toggleAlt(groupIdx);
+        });
+        MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
     };
 
     inline void processAnalysisParams() {}
