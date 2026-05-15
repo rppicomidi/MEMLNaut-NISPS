@@ -83,36 +83,35 @@ public:
     };
 
     void setupAudio(float sample_rate) {
-        // audioAppSaxFX.Setup(sample_rate, interfacePtr);
-        // voiceSpaceList = audioAppSaxFX.getVoiceSpaceNames();
-        // // Reinitialize XiasriAnalysis filters after maxiSettings is properly configured
-        // mlAnalysis.ReinitFilters();
+        audioAppSaxFX.Setup(sample_rate, interfacePtr);
+        voiceSpaceList = audioAppSaxFX.getVoiceSpaceNames();
+        // Reinitialize XiasriAnalysis filters after maxiSettings is properly configured
+        mlAnalysis.ReinitFilters();
     }
 
     __force_inline void loop() {
-        // audioAppSaxFX.loop();
+        audioAppSaxFX.loop();
     }
 
     __force_inline void analyse(stereosample_t x) {
-        // union {
-        //     XiasriAnalysis::parameters_t p;
-        //     float v[XiasriAnalysis::kN_Params];
-        // } param_u;
-        // param_u.p = mlAnalysis.Process(x.L + x.R);
-        // // Write params into shared_buffer
-        // machine_list_buffer.writeNonBlocking(param_u.v, XiasriAnalysis::kN_Params);
+        union {
+            XiasriAnalysis::parameters_t p;
+            float v[XiasriAnalysis::kN_Params];
+        } param_u;
+        param_u.p = mlAnalysis.Process(x.L + x.R);
+        // Write params into shared_buffer
+        machine_list_buffer.writeNonBlocking(param_u.v, XiasriAnalysis::kN_Params);
     }
 
     __force_inline void processAnalysisParams() {
-        // // Read SharedBuffer
-        // std::vector<float> mlist_params(XiasriAnalysis::kN_Params, 0);
-        // machine_list_buffer.readNonBlocking(mlist_params);
-        // // Send parameters to RL interface
-        // interface.readAnalysisParameters(mlist_params);
-        // // PERIODIC_RUN(
-        // //     Serial.printf("%f %f %f\n", mlist_params[0], mlist_params[1], mlist_params[2]);
-        // //     , 100);
-
+        // Read SharedBuffer
+        std::vector<float> mlist_params(XiasriAnalysis::kN_Params, 0);
+        machine_list_buffer.readNonBlocking(mlist_params);
+        // Send parameters to RL interface
+        interface.readAnalysisParameters(mlist_params);
+        // PERIODIC_RUN(
+        //     Serial.printf("%f %f %f\n", mlist_params[0], mlist_params[1], mlist_params[2]);
+        //     , 100);
     }
     
     AudioDriver::codec_config_t getCodecConfig() { return audioAppSaxFX.GetDriverConfig(); }

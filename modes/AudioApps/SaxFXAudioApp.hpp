@@ -25,6 +25,7 @@
 #include "../../voicespaces/VerbFX/harmonic.hpp"
 #include "../../src/memllib/synth/OnePoleSmoother.hpp"
 #include "../../src/memllib/synth/maximilian.h"
+#include "../../src/memllib/synth/GrainDelayI16.hpp"
 #include "../../src/daisysp/Effects/pitchshifter.h"
 
 
@@ -91,55 +92,55 @@ public:
     }
 
     SaxFXAudioApp() : AudioAppBase<NPARAMS>() {
-        auto voiceSpaceDefault = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_DEFAULT_BODY
-        };
-        voiceSpaces[0] = {"Default", voiceSpaceDefault};
-        auto voiceSpaceResonant = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_RESONANT_BODY
-        };
-        voiceSpaces[1] = {"Resonant", voiceSpaceResonant};
-        auto voiceSpaceSoft = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_SOFT_BODY
-        };
-        voiceSpaces[2] = {"Soft", voiceSpaceSoft};
-        auto voiceSpaceCathedral = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_CATHEDRAL_BODY
-        };
-        voiceSpaces[3] = {"Cathedral", voiceSpaceCathedral};
-        auto voiceSpaceShimmer = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_SHIMMER_BODY
-        };
-        voiceSpaces[4] = {"Shimmer", voiceSpaceShimmer};
-        auto voiceSpaceChamber = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_CHAMBER_BODY
-        };
-        voiceSpaces[5] = {"Chamber", voiceSpaceChamber};
-        auto voiceSpaceMetallic = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_METALLIC_BODY
-        };
-        voiceSpaces[6] = {"Metallic", voiceSpaceMetallic};
-        auto voiceSpaceGranular = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_GRANULAR_BODY
-        };
-        voiceSpaces[7] = {"Granular", voiceSpaceGranular};
-        auto voiceSpaceDiffuse = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_DIFFUSE_BODY
-        };
-        voiceSpaces[8] = {"Diffuse", voiceSpaceDiffuse};
-        auto voiceSpaceDark = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_DARK_BODY
-        };
-        voiceSpaces[9] = {"Dark", voiceSpaceDark};
-        auto voiceSpaceBright = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_BRIGHT_BODY
-        };
-        voiceSpaces[10] = {"Bright", voiceSpaceBright};
-        auto voiceSpaceHarmonic = [this](const std::array<float, NPARAMS>& smoothParams) {
-            VOICE_SPACE_VERBFX_HARMONIC_BODY
-        };
-        voiceSpaces[11] = {"Harmonic", voiceSpaceHarmonic};
-        currentVoiceSpace = voiceSpaces[0].mappingFunction;
+        // auto voiceSpaceDefault = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_DEFAULT_BODY
+        // };
+        // voiceSpaces[0] = {"Default", voiceSpaceDefault};
+        // auto voiceSpaceResonant = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_RESONANT_BODY
+        // };
+        // voiceSpaces[1] = {"Resonant", voiceSpaceResonant};
+        // auto voiceSpaceSoft = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_SOFT_BODY
+        // };
+        // voiceSpaces[2] = {"Soft", voiceSpaceSoft};
+        // auto voiceSpaceCathedral = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_CATHEDRAL_BODY
+        // };
+        // voiceSpaces[3] = {"Cathedral", voiceSpaceCathedral};
+        // auto voiceSpaceShimmer = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_SHIMMER_BODY
+        // };
+        // voiceSpaces[4] = {"Shimmer", voiceSpaceShimmer};
+        // auto voiceSpaceChamber = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_CHAMBER_BODY
+        // };
+        // voiceSpaces[5] = {"Chamber", voiceSpaceChamber};
+        // auto voiceSpaceMetallic = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_METALLIC_BODY
+        // };
+        // voiceSpaces[6] = {"Metallic", voiceSpaceMetallic};
+        // auto voiceSpaceGranular = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_GRANULAR_BODY
+        // };
+        // voiceSpaces[7] = {"Granular", voiceSpaceGranular};
+        // auto voiceSpaceDiffuse = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_DIFFUSE_BODY
+        // };
+        // voiceSpaces[8] = {"Diffuse", voiceSpaceDiffuse};
+        // auto voiceSpaceDark = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_DARK_BODY
+        // };
+        // voiceSpaces[9] = {"Dark", voiceSpaceDark};
+        // auto voiceSpaceBright = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_BRIGHT_BODY
+        // };
+        // voiceSpaces[10] = {"Bright", voiceSpaceBright};
+        // auto voiceSpaceHarmonic = [this](const std::array<float, NPARAMS>& smoothParams) {
+        //     VOICE_SPACE_VERBFX_HARMONIC_BODY
+        // };
+        // voiceSpaces[11] = {"Harmonic", voiceSpaceHarmonic};
+        // currentVoiceSpace = voiceSpaces[0].mappingFunction;
         queue_init(&controlMessageQueue, sizeof(controlMessages), 1);
         queue_init(&wetdryQueue, sizeof(float), 1);
     };
@@ -149,10 +150,13 @@ public:
     {
         static float verbFB = 0.f;
         static float delaysFB = 0.f;
+        static int count=0;
+        static bool freeze=false;
 
         float mix = x.L;
 
         // mix = notch.play(mix);
+
 
         // smoother.Process(neuralNetOutputs.data(), smoothParams.data());
 
@@ -241,8 +245,22 @@ public:
 
 
         // stereosample_t ret { y, y };
-        stereosample_t ret { mix, mix };
-        return ret;
+        mix = hp.play(mix);
+        mix = lp.play(mix);
+        mix = notch.play(mix);
+
+        // if (count % 48000 == 0)  {
+        //     freeze = !freeze;
+        //     grainDelay.setFreeze(freeze);
+        // }       
+        const float grainOut = grainDelay.process(mix);
+        const float grainOut2 = grainDelay2.process(mix);
+        const float grainOut3 = grainDelay3.process(mix);
+        const float grainMix = (grainOut + grainOut2 + grainOut3) * 0.33333f;
+        const float out = grainMix;
+
+        count++;
+        return { out, out };
     }
 
     void Setup(float sample_rate, std::shared_ptr<InterfaceBase> interface) override
@@ -250,11 +268,49 @@ public:
         AudioAppBase<NPARAMS>::Setup(sample_rate, interface);
         maxiSettings::sampleRate = sample_rate;
 
-        notch.set(maxiBiquad::filterTypes::NOTCH, 5000.f, 1.f, 0.f);
+        notch.set(maxiBiquad::filterTypes::HIGHSHELF, 9000.f, 0.707f, -12.f);
+        hp.set(maxiBiquad::filterTypes::HIGHPASS, 50.f, 0.707f, 0.f);
+        lp.set(maxiBiquad::filterTypes::LOWPASS, 9000.f, 0.707f, 0.f);
+
+        grainDelay.setup(sample_rate);
+        grainDelay2.setup(sample_rate);
+        grainDelay3.setup(sample_rate);
     }
 
     __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
     {
+        // params 0-7: grainDelay  (large buffer, ~1365ms at 48kHz)
+        grainDelay.setGrainLengthMs(10.f + params[0] * 490.f);
+        grainDelay.setStartTimeMs(  20.f + params[1] * 980.f);
+        grainDelay.setFeedback(          params[2]);
+        grainDelay.setPitch(             powf(2.f, params[3] * 2.f - 1.f));
+        grainDelay.setPitchSpread(       params[4]);
+        grainDelay.setTapLevel(          params[5] * 0);
+        grainDelay.setTapFeedback(       params[6]*0);
+        grainDelay.setFreeze(            params[7] > 0.9f);
+
+        // params 8-15: grainDelay2  (small buffer, ~341ms at 48kHz)
+        grainDelay2.setGrainLengthMs(10.f + params[8]  * 190.f);
+        grainDelay2.setStartTimeMs(  10.f + params[9]  * 240.f);
+        grainDelay2.setFeedback(           params[10]);
+        grainDelay2.setPitch(              powf(2.f, params[11] * 2.f - 1.f));
+        grainDelay2.setPitchSpread(        params[12]);
+        grainDelay2.setTapLevel(           params[13] * 0);
+        grainDelay2.setTapFeedback(        params[14]*0);
+        grainDelay2.setFreeze(             params[15] > 0.9f);
+
+        // params 16-23: grainDelay3  (small buffer, ~341ms at 48kHz)
+        grainDelay3.setGrainLengthMs(10.f + params[16] * 190.f);
+        grainDelay3.setStartTimeMs(  10.f + params[17] * 240.f);
+        grainDelay3.setFeedback(           params[18]);
+        grainDelay3.setPitch(              powf(2.f, params[19] * 2.f - 1.f));
+        grainDelay3.setPitchSpread(        params[20]);
+        grainDelay3.setTapLevel(           params[21]*0);
+        grainDelay3.setTapFeedback(        params[22]*0);
+        grainDelay3.setFreeze(             params[23] > 0.8f);
+
+        // params 24-46: available for future use
+
         controlMessages msg;
         while (queue_try_remove(&controlMessageQueue, &msg)) {
             switch(msg) {
@@ -285,7 +341,6 @@ public:
         if (wetdryKnobValue >= 0.f) {
             wetdry_mix_ = wetdryKnobValue;
         }
-        neuralNetOutputs = params;
     }
     
 
@@ -294,47 +349,14 @@ protected:
     std::array<float,NPARAMS> neuralNetOutputs{0}, smoothParams{0};
 
     // https://ccrma.stanford.edu/~jos/pasp/Freeverb.html
-    static constexpr size_t SIZE_allp0=244;
-    static constexpr size_t SIZE_allp1=605;
-    static constexpr size_t SIZE_allp2=479;
-    static constexpr size_t SIZE_allp3=371;
-
-    maxiReverbFilters<SIZE_allp0> allp0;
-    maxiReverbFilters<SIZE_allp1> allp1;
-    maxiReverbFilters<SIZE_allp2> allp2;
-    maxiReverbFilters<SIZE_allp3> allp3;
-
-    static constexpr size_t SIZE_comb0=1694;
-    static constexpr size_t SIZE_comb1=1759;
-    static constexpr size_t SIZE_comb2=1622;
-    static constexpr size_t SIZE_comb3=1547;
-    static constexpr size_t SIZE_comb4=1379;
-    static constexpr size_t SIZE_comb5=1464;
-    static constexpr size_t SIZE_comb6=1283;
-    static constexpr size_t SIZE_comb7=1205;
-
-    maxiReverbFilters<SIZE_comb0> lpcomb0;
-    maxiReverbFilters<SIZE_comb1> lpcomb1;
-    maxiReverbFilters<SIZE_comb2> lpcomb2;
-    maxiReverbFilters<SIZE_comb3> lpcomb3;
-    maxiReverbFilters<SIZE_comb4> lpcomb4;
-    maxiReverbFilters<SIZE_comb5> lpcomb5;
-    maxiReverbFilters<SIZE_comb6> lpcomb6;
-    maxiReverbFilters<SIZE_comb7> lpcomb7;
-
-    maxiFilter filterBank0;
-    maxiFilter filterBank1;
-    maxiFilter filterBank2;
-    maxiFilter filterBank3;
-    maxiFilter filterBank4;
-    maxiFilter filterBank5;
-    maxiFilter filterBank6;
-    maxiFilter filterBank7;
+    
     maxiBiquad notch;
+    maxiBiquad hp;
+    maxiBiquad lp;
 
-    // DynamicDelay<16384> ddelay;
-    // DynamicDelay<2048> ddelay1;
-    // DynamicDelay<512> ddelay2;
+    GrainDelayI16<16384*4> grainDelay;
+    GrainDelayI16<16384*1> grainDelay2;
+    GrainDelayI16<16384*1> grainDelay3;
 
     maxiDCBlocker dcb;
 
