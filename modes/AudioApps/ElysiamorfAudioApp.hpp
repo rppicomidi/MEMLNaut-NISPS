@@ -18,48 +18,7 @@
 #include "../../voicespaces/VoiceSpaces.hpp"
 
 
-struct FMOp {
-    float prevOutput = 0.f;
-
-    // phase:    external phasor 0-1 (e.g. barPhasor * phasorMul)
-    // modIn:    signal from another operator [-1, 1], 0 = none
-    // freqMul:  cycles per phase period (1 = once per bar, 2 = twice, 0.5 = half, etc.)
-    // modIndex: depth of modulation — scales how much modIn shifts the phase
-    // fbLevel:  feedback 0-1 — feeds prevOutput back into own phase
-    float __force_inline process(float phase, float modIn,
-                                        float freqMul, float modIndex,
-                                        float fbLevel) {
-        float p = fmodf(phase * freqMul + modIndex * modIn + fbLevel * prevOutput, 1.f);
-        if (p < 0.f) p += 1.f;
-        float out = sinf(TWO_PI * p);
-        prevOutput = out;
-        return out;
-    }
-};
-
-// Convenience: 2-op FM pair matching the (phase, carrierFreq, modFreq, modIndex, fbLevel) signature.
-// fbLevel sits on the modulator (DX7 style). carrier and modulator are caller-owned FMOp instances.
-float __force_inline fmPair(float phase,
-                                   float carrierFreq, float modFreq,
-                                   float modIndex, float fbLevel,
-                                   FMOp& carrier, FMOp& modulator) {
-    float modOut = modulator.process(phase, 0.f, modFreq, 0.f, fbLevel);
-    return carrier.process(phase, modOut, carrierFreq, modIndex, 0.f);
-}
-
-struct fmSeqState {
-    float phaseOffset = 0.f;
-    float phasorMul = 1.f;
-    float ratio=1.f;
-    float carrierFreq=1.f;
-    float modFreq = 2.f;
-    float modIndex = 2.f;
-    float fbLevel = 0.f;
-    FMOp carrier;
-    FMOp modulator;
-};
-
-
+#include "FMPatternGen.hpp"
 #include "RatioSeq.hpp"
 
 template<size_t NPARAMS=56, size_t NSEQUENCES=8>
@@ -311,8 +270,8 @@ protected:
     size_t sequencingSampleDiv = 500;
     size_t sequencingSampleCounter = 0;
 
-    std::array<ratioSeqState, NSEQUENCES> ratioSeqStates;
-    std::array<fmSeqState, NSEQUENCES> fmSeqStates;
+    std::array<ratioSeqState<>, NSEQUENCES> ratioSeqStates;
+    std::array<FMPatternGenState, NSEQUENCES> fmSeqStates;
 
 
     float midiClockPhasor=0;

@@ -1,6 +1,6 @@
 //machine config
 
-#define JOYSTICK_IS_4D true
+#define JOYSTICK_IS_4D true  
 #define MEMLNAUT_ANALOG_INPUTS 3 + (JOYSTICK_IS_4D ? 1 : 0)
 #define MEMLNAUT_INPUT_MODE InterfaceRL::INPUT_MODES::JOYSTICK
 
@@ -26,9 +26,10 @@
 // #define MODE_CHANNELSTRIP
 // #define MODE_SOUNDANALYSISMIDI
 // #define MODE_XIASRI
-#define MODE_BREAKOR
+// #define MODE_BREAKOR
+// #define MODE_BRAYKORE
 // #define MODE_VERBFX
-// #define MODE_SAXFX
+#define MODE_SAXFX
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
@@ -53,6 +54,10 @@
 #ifdef MODE_BREAKOR
   #include "modes/MEMLNautModeBreakOr.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeBreakOr
+#endif
+#ifdef MODE_BRAYKORE
+  #include "modes/MEMLNautModeBraykore.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeBraykore
 #endif
 #ifdef MODE_VERBFX
   #include "modes/MEMLNautModeVerbFX.hpp"
@@ -123,6 +128,7 @@ volatile bool APP_SRAM interface_ready = false;
 
 
 void setup() {
+  AudioDriver::SetSampleRate(MEMLNAUT_MODE_TYPE::kDesiredSampleRate);
   set_sys_clock_khz(AudioDriver::GetSysClockSpeed(), true);
 
   // if (PSRAMManager::init()) {
@@ -205,7 +211,7 @@ void loop() {
       Serial.println(".");
       // Blink LED
       digitalWrite(33, HIGH);
-      constexpr float audioHeadroomMul = 1.0 / (1000000 * 48.0 / kSampleRate);
+      const float audioHeadroomMul = 1.0 / (1000000 * 48.0 / kSampleRate);
       Serial.printf("ml: %d, aud: %d, q: %f\n", PERF_GET_MEAN(MLSTATS), AUDIOLOOP_MEAN, AUDIOLOOP_MEAN * audioHeadroomMul);
     } else {
       // Un-blink LED

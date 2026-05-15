@@ -19,14 +19,17 @@
 
 #include "RatioSeq.hpp"
 #include "RatioSeqEngine.hpp"
+#include "FMPatternGen.hpp"
 
 
 template<size_t NPARAMS=56, size_t NSEQUENCES=8>
 class BreakOrAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
-    static constexpr size_t kN_Params = NPARAMS;
-    static constexpr size_t nVoiceSpaces=0;
+    static constexpr size_t kN_Params    = NPARAMS;
+    static constexpr size_t nVoiceSpaces = 0;
+    static constexpr size_t kNRatioSeqs  = NSEQUENCES / 2;  // 4 — trigger outputs
+    static constexpr size_t kNFMSeqs     = NSEQUENCES / 2;  // 4 — continuous outputs
 
     static constexpr uint32_t kFocusS0 = (1u << 0);
     static constexpr uint32_t kFocusS1 = (1u << 1);
@@ -62,7 +65,8 @@ public:
 
     std::shared_ptr<MIDIInOut> midiIO;
 
-    RatioSeqEngine<NSEQUENCES> seqEngine;
+    RatioSeqEngine<kNRatioSeqs> seqEngine;
+    std::array<FMPatternGenState, kNFMSeqs> fmStates;
 
     std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
 
@@ -121,9 +125,19 @@ public:
             }
 
             if (seqEngine.tick()) {
-                // Capture trigger state for I2C after tick
-                for (size_t i = 0; i < NSEQUENCES; i++) {
-                    i2cValues[i] = seqEngine.states[i].lastTrig;
+                // Trigger outputs (S1–S4)
+                for (size_t i = 0; i < kNRatioSeqs; i++) {
+                    i2cValues[i] = seqEngine.states[i].lastTrig ? 1.f : 0.f;
+                }
+                // Continuous FM outputs (S5–S8)
+                float bp = seqEngine.getBarPhasor();
+                for (size_t i = 0; i < kNFMSeqs; i++) {
+                    auto& s = fmStates[i];
+                    float p = fmodf(bp * s.phasorMul + s.phaseOffset, 1.f);
+                    if (p < 0.f) p += 1.f;
+                    float v = fmPair(p, s.carrierFreq, s.modFreq, s.modIndex, s.fbLevel,
+                                     s.carrier, s.modulator);
+                    i2cValues[kNRatioSeqs + i] = (v + 1.f) * 0.5f;
                 }
                 midiIO->flushQueue();
                 queue_try_add(&i2cOutQueue, &i2cValues);
@@ -141,8 +155,8 @@ public:
         sampleRatef = static_cast<float>(sample_rate);
         sequencerClockMode = clockMode;
 
-        const size_t midiNotes[NSEQUENCES] = {36,37,38,39,40, 42,43,45};
-        for (size_t i = 0; i < NSEQUENCES; i++) {
+        const size_t midiNotes[kNRatioSeqs] = {36, 37, 38, 39};
+        for (size_t i = 0; i < kNRatioSeqs; i++) {
             seqEngine.states[i].midiNote = midiNotes[i];
         }
 
@@ -185,7 +199,19 @@ public:
             }
         }
 
-        seqEngine.updateParams(params, 0);
+        seqEngine.updateParams(params, 0);  // params 0–27 → 4 ratio seqs
+
+        size_t pi = kNRatioSeqs * 7;        // = 28
+        for (auto& s : fmStates) {
+            s.carrierFreq = (0.25f + params[pi++] * 0.75f) * 0.125f;
+            s.modFreq     = (0.25f + params[pi++] * 0.75f) * 0.25f;
+            s.modIndex    = params[pi++] * 4.f;
+            s.fbLevel     = params[pi++];
+            static const float fmMuls[4] = {1.f, 2.f, 3.f, 4.f};
+            s.phasorMul   = fmMuls[(int)(params[pi++] * 3.999f)];
+            s.phaseOffset = ((int)(params[pi++] * timeSigBeats)) * timeSigBeatsInv;
+            pi++;  // 7th param reserved
+        }
     }
 
     void setTimeSignature(float beats, float division) {
@@ -197,6 +223,8 @@ protected:
     float i2cValues[8] = {0,0,0,0,0,0,0,0};
 
     float sampleRatef;
+    float timeSigBeats = 4.f;
+    float timeSigBeatsInv = 0.25f;
     bool firstParamsReceived = false;
 };
 

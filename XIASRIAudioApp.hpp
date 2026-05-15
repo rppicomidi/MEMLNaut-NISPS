@@ -227,7 +227,7 @@ protected:
     float pitchshifter_mix_{0.5f};
     float wetdry_mix_{0.5f};
 
-    OnePoleSmoother<kN_Params> smoother{150.f, kSampleRate};
+    OnePoleSmoother<kN_Params> smoother{150.f, (float)kSampleRate};
 
 };
 

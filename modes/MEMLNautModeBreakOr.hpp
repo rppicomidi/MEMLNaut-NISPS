@@ -18,7 +18,8 @@
 
 class MEMLNautModeBreakOr {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;  
+    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
+    constexpr static size_t kDesiredSampleRate = 48000;
 
     USeqI2C i2cOut;
     FocusManager<BreakOrAudioApp<>::kN_Params, 8> focusManager;
@@ -112,16 +113,27 @@ public:
     }
 
     void addViews() {
+        auto updateActiveDims = [this]() {
+            uint32_t mask = focusManager.getSelectedMask();
+            constexpr size_t N = BreakOrAudioApp<>::kN_Params;
+            std::vector<bool> active(N);
+            for (size_t i = 0; i < N; i++)
+                active[i] = (mask == 0) || ((BreakOrAudioApp<>::kParamGroupMask[i] & mask) != 0);
+            interface.setActiveDims(active);
+        };
+        updateActiveDims();
+
         auto focusView = std::make_shared<BlockSelectView>(
             "Focus", TFT_DARKGREY, 8, 60, 50, TFT_WHITE,
             std::vector<String>{"S1","S2","S3","S4","S5","S6","S7","S8"},
             TFT_GREENYELLOW, 2);
 
-        focusView->SetOnSelectCallback([this, focusView](size_t id) {
+        focusView->SetOnSelectCallback([this, focusView, updateActiveDims](size_t id) {
             size_t groupIdx = id - 1;
             uint32_t newMask = focusManager.getSelectedMask() ^ (1u << groupIdx);
             focusManager.setFocus(newMask, interface.getLastAction());
             focusView->toggleAlt(groupIdx);
+            updateActiveDims();
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
     };

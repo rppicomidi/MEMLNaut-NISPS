@@ -7,10 +7,10 @@
 #include <cstddef>
 #include <cmath>
 
-template<size_t NSEQUENCES>
+template<size_t NSEQUENCES, size_t NRATIOS=3, size_t NAMPRATIOS=2>
 class RatioSeqEngine {
 public:
-    std::array<ratioSeqState, NSEQUENCES> states;
+    std::array<ratioSeqState<NRATIOS, NAMPRATIOS>, NSEQUENCES> states;
 
     std::function<void(size_t seqIdx, int velocity)> onNoteOn;
     std::function<void(size_t seqIdx)> onNoteOff;
@@ -78,8 +78,8 @@ public:
                 float seqPhasor = barPhasor * seq.phasorMul;
                 seqPhasor = fmodf(seqPhasor + seq.phaseOffset, 1.f);
 
-                bool trig = ratioSeq<3>(seqPhasor, seq.phaseOffset, seq.ratioSum, seq.ratios, seq.pulseWidth);
-                bool highAmp = ratioSeq<2>(seqPhasor, seq.phaseOffset, seq.ampRatioSum, seq.ampRatios, 0.5f);
+                bool trig    = ratioSeq<NRATIOS>   (seqPhasor, seq.phaseOffset, seq.ratioSum,    seq.ratios,    seq.pulseWidth);
+                bool highAmp = ratioSeq<NAMPRATIOS>(seqPhasor, seq.phaseOffset, seq.ampRatioSum, seq.ampRatios, 0.5f);
 
                 if (trig && !seq.lastTrig) {
                     if (onNoteOn) onNoteOn(i, highAmp ? 127 : 64);
@@ -127,6 +127,9 @@ public:
     float midiClockPhasorInc = 0.f;
     float midiClockPhasor = 0.f;
     bool playing = false;
+
+    float getBarPhasor() const { return barPhasor; }
+    float getBarPhasorInc() const { return barPhasorInc; }
 
 private:
     float sampleRatef = 48000.f;

@@ -152,95 +152,96 @@ public:
 
         float mix = x.L;
 
-        mix = notch.play(mix);
+        // mix = notch.play(mix);
 
-        smoother.Process(neuralNetOutputs.data(), smoothParams.data());
+        // smoother.Process(neuralNetOutputs.data(), smoothParams.data());
 
-        //mapping
-        currentVoiceSpace(smoothParams);
+        // //mapping
+        // currentVoiceSpace(smoothParams);
 
-        //XFADE
+        // //XFADE
 
-        const float filterBankDelayFBLevel = sqrtf(filterBankDelayXFade);
-        const float filterBankDelayFBLevelInv = sqrtf(1.f - filterBankDelayXFade);
+        // const float filterBankDelayFBLevel = sqrtf(filterBankDelayXFade);
+        // const float filterBankDelayFBLevelInv = sqrtf(1.f - filterBankDelayXFade);
 
-        /////////////////// FILTERBANK
+        // /////////////////// FILTERBANK
 
-        float filterBankIn = mix + (filterBankDelayFBLevel * ddelayFeedback); 
-        float filterBankOut=mix;
+        // float filterBankIn = mix + (filterBankDelayFBLevel * ddelayFeedback); 
+        // float filterBankOut=mix;
 
-        if (false) {
-            filterBankOut = filterBank0.bandpassChamberlain(filterBankIn,  filterBankF0, filterBankRes0);
-            filterBankOut += filterBank1.bandpassChamberlain(filterBankIn, filterBankF1, filterBankRes1);
-            filterBankOut += filterBank2.bandpassChamberlain(filterBankIn, filterBankF2, filterBankRes2);
-            filterBankOut += filterBank3.bandpassChamberlain(filterBankIn, filterBankF3, filterBankRes3);
-            filterBankOut += filterBank4.bandpassChamberlain(filterBankIn, filterBankF4, filterBankRes4);
-            filterBankOut += filterBank5.bandpassChamberlain(filterBankIn, filterBankF5, filterBankRes5);
-            filterBankOut += filterBank6.bandpassChamberlain(filterBankIn, filterBankF6, filterBankRes6);
-            filterBankOut += filterBank7.bandpassChamberlain(filterBankIn, filterBankF7, filterBankRes7);
+        // if (false) {
+        //     filterBankOut = filterBank0.bandpassChamberlain(filterBankIn,  filterBankF0, filterBankRes0);
+        //     filterBankOut += filterBank1.bandpassChamberlain(filterBankIn, filterBankF1, filterBankRes1);
+        //     filterBankOut += filterBank2.bandpassChamberlain(filterBankIn, filterBankF2, filterBankRes2);
+        //     filterBankOut += filterBank3.bandpassChamberlain(filterBankIn, filterBankF3, filterBankRes3);
+        //     filterBankOut += filterBank4.bandpassChamberlain(filterBankIn, filterBankF4, filterBankRes4);
+        //     filterBankOut += filterBank5.bandpassChamberlain(filterBankIn, filterBankF5, filterBankRes5);
+        //     filterBankOut += filterBank6.bandpassChamberlain(filterBankIn, filterBankF6, filterBankRes6);
+        //     filterBankOut += filterBank7.bandpassChamberlain(filterBankIn, filterBankF7, filterBankRes7);
 
-            filterBankOut *= 0.125f;
-        }
+        //     filterBankOut *= 0.125f;
+        // }
 
-        ////////////// DELAYS
-        float delayIn = filterBankOut;
+        // ////////////// DELAYS
+        // float delayIn = filterBankOut;
 
-        float delayed = enableLongDelay ? ddelay.read(ddelayTime) : 0.f;
-        ddelay.write((delayIn * filterBankDelayFBLevelInv) + ((ddelayFeedback + (delayIn * filterBankDelayFBLevel)) * delayed));
+        // float delayed = enableLongDelay ? ddelay.read(ddelayTime) : 0.f;
+        // ddelay.write((delayIn * filterBankDelayFBLevelInv) + ((ddelayFeedback + (delayIn * filterBankDelayFBLevel)) * delayed));
 
-        float delayed1 = enableMediumDelay ? ddelay1.read(ddelayTime1) : 0.f;
-        ddelay1.write(delayIn + (ddelayFeedback1 * delayed1));
+        // float delayed1 = enableMediumDelay ? ddelay1.read(ddelayTime1) : 0.f;
+        // ddelay1.write(delayIn + (ddelayFeedback1 * delayed1));
 
-        float delayed2 = enableShortDelay ? ddelay2.read(ddelayTime2) : 0.f;
-        ddelay2.write(delayIn + (ddelayFeedback2 * delayed2));
+        // float delayed2 = enableShortDelay ? ddelay2.read(ddelayTime2) : 0.f;
+        // ddelay2.write(delayIn + (ddelayFeedback2 * delayed2));
 
-        float a = fminf(delayMorph * 2.f, 1.f);
-        float b = fmaxf(delayMorph * 2.f - 1.f, 0.f);
-        constexpr float kEqualMix = 0.57735f; // 1/sqrt(3), constant-power equal mix
-        float w_short  = kEqualMix + delayBlend * (sqrtf(1.f - a)                    - kEqualMix);
-        float w_medium = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(1.f - b)         - kEqualMix);
-        float w_long   = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(b)               - kEqualMix);
-        float delaySum = (w_short * delayed2) + (w_medium * delayed1) + (w_long * delayed);
+        // float a = fminf(delayMorph * 2.f, 1.f);
+        // float b = fmaxf(delayMorph * 2.f - 1.f, 0.f);
+        // constexpr float kEqualMix = 0.57735f; // 1/sqrt(3), constant-power equal mix
+        // float w_short  = kEqualMix + delayBlend * (sqrtf(1.f - a)                    - kEqualMix);
+        // float w_medium = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(1.f - b)         - kEqualMix);
+        // float w_long   = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(b)               - kEqualMix);
+        // float delaySum = (w_short * delayed2) + (w_medium * delayed1) + (w_long * delayed);
 
-        //////////////// VERB
-        float verbIn = enableReverb ? filterBankOut : 0.f;
-        if (enableDelayToReverb && enableReverb) {
-            verbIn += (delayToVerbLevel * delaySum);
-        }
-        float verbOut=0.f;
-
-
-        verbOut = lpcomb0.lpcombfb(filterBankOut, SIZE_comb0, lp0fb, lp0cutoff);
-        verbOut += lpcomb1.lpcombfb(filterBankOut, SIZE_comb1, lp1fb, lp1cutoff);
-        verbOut += lpcomb2.lpcombfb(filterBankOut, SIZE_comb2, lp2fb, lp2cutoff);
-        verbOut += lpcomb3.lpcombfb(filterBankOut, SIZE_comb3, lp3fb, lp3cutoff);
-        verbOut += lpcomb4.lpcombfb(filterBankOut, SIZE_comb4, lp4fb, lp4cutoff);
-        verbOut += lpcomb5.lpcombfb(filterBankOut, SIZE_comb5, lp5fb, lp5cutoff);
-        verbOut += lpcomb6.lpcombfb(filterBankOut, SIZE_comb6, lp6fb, lp6cutoff);
-        verbOut += lpcomb7.lpcombfb(filterBankOut, SIZE_comb7, lp7fb, lp7cutoff);
+        // //////////////// VERB
+        // float verbIn = enableReverb ? filterBankOut : 0.f;
+        // if (enableDelayToReverb && enableReverb) {
+        //     verbIn += (delayToVerbLevel * delaySum);
+        // }
+        // float verbOut=0.f;
 
 
-
-
-        verbOut = allp0.allpass(verbOut, SIZE_allp0, allp0fb);
-        verbOut = allp1.allpass(verbOut, SIZE_allp1, allp1fb);
-        verbOut = allp2.allpass(verbOut, SIZE_allp2, allp2fb);
-        verbOut = allp3.allpass(verbOut, SIZE_allp3, allp3fb);
-
-        float y= (sqrtf(verbVsDelayLevel) * delaySum) + (sqrtf(1.f - verbVsDelayLevel) * verbOut);
-
-        //feedback 
-        delaysFB = delaySum;
-        verbFB = verbOut;
+        // verbOut = lpcomb0.lpcombfb(filterBankOut, SIZE_comb0, lp0fb, lp0cutoff);
+        // verbOut += lpcomb1.lpcombfb(filterBankOut, SIZE_comb1, lp1fb, lp1cutoff);
+        // verbOut += lpcomb2.lpcombfb(filterBankOut, SIZE_comb2, lp2fb, lp2cutoff);
+        // verbOut += lpcomb3.lpcombfb(filterBankOut, SIZE_comb3, lp3fb, lp3cutoff);
+        // verbOut += lpcomb4.lpcombfb(filterBankOut, SIZE_comb4, lp4fb, lp4cutoff);
+        // verbOut += lpcomb5.lpcombfb(filterBankOut, SIZE_comb5, lp5fb, lp5cutoff);
+        // verbOut += lpcomb6.lpcombfb(filterBankOut, SIZE_comb6, lp6fb, lp6cutoff);
+        // verbOut += lpcomb7.lpcombfb(filterBankOut, SIZE_comb7, lp7fb, lp7cutoff);
 
 
 
 
-        // Mix dry
-        y = (y * sqrtf(wetdry_mix_)) + (mix * sqrtf(1.f - wetdry_mix_));
+        // verbOut = allp0.allpass(verbOut, SIZE_allp0, allp0fb);
+        // verbOut = allp1.allpass(verbOut, SIZE_allp1, allp1fb);
+        // verbOut = allp2.allpass(verbOut, SIZE_allp2, allp2fb);
+        // verbOut = allp3.allpass(verbOut, SIZE_allp3, allp3fb);
+
+        // float y= (sqrtf(verbVsDelayLevel) * delaySum) + (sqrtf(1.f - verbVsDelayLevel) * verbOut);
+
+        // //feedback 
+        // delaysFB = delaySum;
+        // verbFB = verbOut;
 
 
-        stereosample_t ret { y, y };
+
+
+        // // Mix dry
+        // y = (y * sqrtf(wetdry_mix_)) + (mix * sqrtf(1.f - wetdry_mix_));
+
+
+        // stereosample_t ret { y, y };
+        stereosample_t ret { mix, mix };
         return ret;
     }
 
@@ -331,9 +332,9 @@ protected:
     maxiFilter filterBank7;
     maxiBiquad notch;
 
-    DynamicDelay<16384> ddelay;
-    DynamicDelay<2048> ddelay1;
-    DynamicDelay<512> ddelay2;
+    // DynamicDelay<16384> ddelay;
+    // DynamicDelay<2048> ddelay1;
+    // DynamicDelay<512> ddelay2;
 
     maxiDCBlocker dcb;
 
@@ -360,7 +361,7 @@ protected:
     float verbVsDelayLevel{0}, delayToVerbLevel{0}, filterBankDelayXFade{0};
     float delayMorph{0.5f}, delayBlend{0.f};
 
-    OnePoleSmoother<kN_Params> smoother{150.f, kSampleRate};
+    OnePoleSmoother<kN_Params> smoother{150.f, (float)kSampleRate};
     
     // maxiDynamicsLite limiter;
 

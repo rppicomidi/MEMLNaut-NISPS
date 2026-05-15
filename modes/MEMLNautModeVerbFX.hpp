@@ -15,13 +15,14 @@
 
 class MEMLNautModeVerbFX {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;  
+    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
+    constexpr static size_t kDesiredSampleRate = 48000;
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
     // XiasriAnalysis mlAnalysis{kSampleRate};
     // SharedBuffer<float, XiasriAnalysis::kN_Params> machine_list_buffer;
 
-    VerbFXAudioApp<> audioAppVerbFX;
+    inline static VerbFXAudioApp<> audioAppVerbFX;
     std::array<String, VerbFXAudioApp<>::nVoiceSpaces> voiceSpaceList;
     std::shared_ptr<MIDIInOut> midi_interf;
     std::shared_ptr<BlockSelectView> enableView;
@@ -72,7 +73,7 @@ public:
 
         std::shared_ptr<VoiceSpaceSelectView> voiceSpaceSelectView;
         voiceSpaceSelectView = std::make_shared<VoiceSpaceSelectView>("Voice Spaces");
-        MEMLNaut::Instance()->disp->InsertViewAfter(interface.rlStatsView, voiceSpaceSelectView);
+        MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, voiceSpaceSelectView);
         voiceSpaceSelectView->setOptions(voiceSpaceList);
         voiceSpaceSelectView->setNewVoiceCallback(
             [this](size_t idx) {

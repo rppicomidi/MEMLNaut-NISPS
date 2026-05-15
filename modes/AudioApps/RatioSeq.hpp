@@ -4,20 +4,20 @@
 #include <array>
 #include <cstddef>
 
+template<size_t NRATIOS=3, size_t NAMPRATIOS=2>
 struct ratioSeqState {
-    std::array<float, 3> ratios{1.f};
-    float phasor=0.f;
-    float phasorInc=0.f;
+    std::array<float, NRATIOS>    ratios{1.f};
+    float phasor      = 0.f;
+    float phasorInc   = 0.f;
     float phaseOffset = 0.f;
-    bool lastTrig = false;
-    float phasorMul = 1.f;
-    float ratioSum=1.f;
-    int midiNote = 36;
-    float pulseWidth = 0.5f;
+    bool  lastTrig    = false;
+    float phasorMul   = 1.f;
+    float ratioSum    = 1.f;
+    int   midiNote    = 36;
+    float pulseWidth  = 0.5f;
 
-    std::array<float, 2> ampRatios{1.f};
-    float ampRatioSum=1.f;
-
+    std::array<float, NAMPRATIOS> ampRatios{1.f};
+    float ampRatioSum = 1.f;
 };
 
 template<size_t seqLength>
