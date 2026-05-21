@@ -5,23 +5,20 @@
 #include "MEMLNautMode.hpp"
 #include <memory>
 #include <array>
-#include "../XiasriAnalysis.hpp"
-#include "../src/memllib/utils/sharedMem.hpp"
 #include "../src/memllib/audio/AudioDriver.hpp"
 #include "../src/memllib/examples/InterfaceRL.hpp"
 #include "../src/memllib/PicoDefs.hpp"
-#include "../XiasriAnalysis.hpp"
+#include "../MachineListeningMixin.hpp"
 
 
 
 class MEMLNautModeSaxFX {
 public:
-    constexpr static size_t kN_InputParams = XiasriAnalysis::kN_Params;  //ML
+    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
-    XiasriAnalysis mlAnalysis{(float)kSampleRate};
-    SharedBuffer<float, XiasriAnalysis::kN_Params> machine_list_buffer;
+    MachineListeningMixin mlMixin;
 
     inline static SaxFXAudioApp<> audioAppSaxFX;
     std::array<String, SaxFXAudioApp<>::nVoiceSpaces> voiceSpaceList;
@@ -80,39 +77,22 @@ public:
             [this](size_t idx) {
                 audioAppSaxFX.setVoiceSpace(idx);
             });
+        interface.addInputSourceView();
     };
 
     void setupAudio(float sample_rate) {
         audioAppSaxFX.Setup(sample_rate, interfacePtr);
         voiceSpaceList = audioAppSaxFX.getVoiceSpaceNames();
-        // Reinitialize XiasriAnalysis filters after maxiSettings is properly configured
-        mlAnalysis.ReinitFilters();
+        mlMixin.setup(interface);
     }
 
     __force_inline void loop() {
         audioAppSaxFX.loop();
     }
 
-    __force_inline void analyse(stereosample_t x) {
-        union {
-            XiasriAnalysis::parameters_t p;
-            float v[XiasriAnalysis::kN_Params];
-        } param_u;
-        param_u.p = mlAnalysis.Process(x.L + x.R);
-        // Write params into shared_buffer
-        machine_list_buffer.writeNonBlocking(param_u.v, XiasriAnalysis::kN_Params);
-    }
+    __force_inline void analyse(stereosample_t x) { mlMixin.analyse(x); }
 
-    __force_inline void processAnalysisParams() {
-        // Read SharedBuffer
-        std::vector<float> mlist_params(XiasriAnalysis::kN_Params, 0);
-        machine_list_buffer.readNonBlocking(mlist_params);
-        // Send parameters to RL interface
-        interface.readAnalysisParameters(mlist_params);
-        // PERIODIC_RUN(
-        //     Serial.printf("%f %f %f\n", mlist_params[0], mlist_params[1], mlist_params[2]);
-        //     , 100);
-    }
+    __force_inline void processAnalysisParams() { mlMixin.processAnalysisParams(); }
     
     AudioDriver::codec_config_t getCodecConfig() { return audioAppSaxFX.GetDriverConfig(); }
 

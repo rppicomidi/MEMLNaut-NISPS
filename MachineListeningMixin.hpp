@@ -1,0 +1,31 @@
+#pragma once
+#include "XiasriAnalysis.hpp"
+#include "src/memllib/utils/sharedMem.hpp"
+#include "src/memllib/examples/InterfaceRL.hpp"
+#include "src/memllib/PicoDefs.hpp"
+
+class MachineListeningMixin {
+    XiasriAnalysis mlAnalysis_{48000.f};
+    SharedBuffer<float, XiasriAnalysis::kN_Params> machine_list_buffer_;
+    InterfaceRL* iface_ = nullptr;
+public:
+    // Call from setupAudio() after audio app Setup() (maxiSettings must be ready)
+    void setup(InterfaceRL& iface) {
+        iface_ = &iface;
+        iface.setHasMachineListening(true);
+        mlAnalysis_.ReinitFilters();
+    }
+    __force_inline void analyse(stereosample_t x) {
+        union {
+            XiasriAnalysis::parameters_t p;
+            float v[XiasriAnalysis::kN_Params];
+        } u;
+        u.p = mlAnalysis_.Process(x.L + x.R);
+        machine_list_buffer_.writeNonBlocking(u.v, XiasriAnalysis::kN_Params);
+    }
+    __force_inline void processAnalysisParams() {
+        std::vector<float> mlist_params(XiasriAnalysis::kN_Params, 0);
+        machine_list_buffer_.readNonBlocking(mlist_params);
+        if (iface_) iface_->readAnalysisParameters(mlist_params);
+    }
+};

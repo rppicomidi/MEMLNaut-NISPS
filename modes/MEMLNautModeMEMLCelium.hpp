@@ -14,7 +14,7 @@
 
 class MEMLNautModeMEMLCelium {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
+    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     inline static MEMLCeliumAudioApp<> audioAppMEMLCelium;
@@ -155,6 +155,7 @@ public:
     //         is_playing_note = false;
     //   });
     //   MEMLNaut::Instance()->disp->AddView(noteTrigView);
+        interface.addInputSourceView();
     };
 
     inline void processAnalysisParams() {}

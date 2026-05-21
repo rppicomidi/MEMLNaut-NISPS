@@ -18,7 +18,7 @@
 
 class MEMLNautModeBreakOr {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
+    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     USeqI2C i2cOut;
@@ -136,6 +136,7 @@ public:
             updateActiveDims();
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
+        interface.addInputSourceView();
     };
 
     inline void processAnalysisParams() {}

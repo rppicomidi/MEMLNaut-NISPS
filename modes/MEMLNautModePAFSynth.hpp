@@ -12,7 +12,7 @@
 
 class MEMLNautModePAFSynth {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
+    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     inline static PAFSynthAudioApp<> audioAppPAFSynth;
@@ -107,6 +107,7 @@ public:
             is_playing_note = false; // Reset flag when note is released
       });
       MEMLNaut::Instance()->disp->AddView(noteTrigView);
+      interface.addInputSourceView();
     };
 
     // size_t getNMIDICtrlOutputs() {

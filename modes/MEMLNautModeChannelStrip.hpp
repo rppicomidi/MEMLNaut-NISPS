@@ -10,7 +10,7 @@
 
 class MEMLNautModeChannelStrip {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
+    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
     ChannelStripAudioApp<> audioAppChannelStrip;
     std::array<String, ChannelStripAudioApp<>::nVoiceSpaces> voiceSpaceList;
@@ -87,7 +87,7 @@ public:
             [this](size_t idx) {
                 audioAppChannelStrip.setVoiceSpace(idx);
             });
-
+        interface.addInputSourceView();
     };
 
     void setupAudio(float sample_rate) {

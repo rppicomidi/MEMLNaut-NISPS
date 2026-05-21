@@ -29,11 +29,11 @@
 // #define MODE_BREAKOR
 // #define MODE_BRAYKORE
 // #define MODE_VERBFX
-#define MODE_SAXFX
+// #define MODE_SAXFX
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
-// #define MODE_MEMLCELIUM
-
+#define MODE_MEMLCELIUM
+  
 #include "modes/MEMLNautMode.hpp"
 #ifdef MODE_PAFSYNTH
   #include "modes/MEMLNautModePAFSynth.hpp"

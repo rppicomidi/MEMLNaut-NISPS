@@ -16,7 +16,7 @@
 
 class MEMLNautModeElysiamorfs {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
+    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     USeqI2C i2cOut;
@@ -99,6 +99,7 @@ public:
     }
 
     void addViews() {
+        interface.addInputSourceView();
     };
 
     inline void processAnalysisParams() {}

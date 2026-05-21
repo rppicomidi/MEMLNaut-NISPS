@@ -17,7 +17,7 @@
 
 class MEMLNautModeBraykore {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
+    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     FocusManager<BraykoreAudioApp<>::kN_Params, 5> focusManager;
@@ -100,6 +100,7 @@ public:
             updateActiveDims();
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
+        interface.addInputSourceView();
     }
 
     inline void processAnalysisParams() {}

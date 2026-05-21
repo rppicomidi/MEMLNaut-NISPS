@@ -15,7 +15,7 @@
 
 class MEMLNautModeBunty {
 public:
-    constexpr static size_t kN_InputParams = MEMLNAUT_ANALOG_INPUTS;
+    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 32000;
     constexpr static size_t kN_SerialInputs = MEMLNAUT_ANALOG_INPUTS;
     InterfaceRL interface;
@@ -83,6 +83,7 @@ public:
             [this](size_t idx) {
                 audioAppBunty.setVoiceSpace(idx);
             });
+        interface.addInputSourceView();
     };
 
     void setupAudio(float sample_rate) {
