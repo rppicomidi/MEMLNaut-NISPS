@@ -3,7 +3,9 @@
 #include "../src/memllib/interface/MIDIInOut.hpp"
 #include "../src/memllib/hardware/memlnaut/display/XYPadView.hpp"
 #include "../src/memllib/hardware/memlnaut/display/CCSelectView.hpp"
+#include "../src/memllib/hardware/memlnaut/display/BlockSelectView.hpp"
 #include "../src/memllib/hardware/memlnaut/MEMLNaut.hpp"
+#include "../src/memllib/audio/FocusManager.hpp"
 #include "../TRxSAudioApp.hpp"
 #include "../src/memllib/examples/InterfaceRL.hpp"
 #include "../src/memllib/PicoDefs.hpp"
@@ -54,6 +56,15 @@ static const std::vector<uint8_t> kTR6SDefaultCCs = {
     46, 58, 61, 80                // LT/HC/CH/OH Tune
 };
 
+// Focus group bitmasks — one per TR-6S instrument/category
+static constexpr uint32_t kTRxSFocusBD = (1u << 0);
+static constexpr uint32_t kTRxSFocusSD = (1u << 1);
+static constexpr uint32_t kTRxSFocusLT = (1u << 2);
+static constexpr uint32_t kTRxSFocusHC = (1u << 3);
+static constexpr uint32_t kTRxSFocusCH = (1u << 4);
+static constexpr uint32_t kTRxSFocusOH = (1u << 5);
+static constexpr uint32_t kTRxSFocusFX = (1u << 6);
+
 class MEMLNautModeTRxS {
 public:
     constexpr static size_t kN_InputParams    = InterfaceRL::kMaxNNInputs;
@@ -65,11 +76,26 @@ public:
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
 
+    FocusManager<TRxSAudioApp<>::kN_Params, 7> focusManager;
+    uint32_t presentGroupsMask_ = 0;
+
     void setupInterface() {
         interface.setup(kN_InputParams, TRxSAudioApp<>::kN_Params);
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("trxs", "TR-6S");
         interfacePtr = make_non_owning(interface);
+
+        focusManager.setGroupName(0, "BD");
+        focusManager.setGroupName(1, "SD");
+        focusManager.setGroupName(2, "LT");
+        focusManager.setGroupName(3, "HC");
+        focusManager.setGroupName(4, "CH");
+        focusManager.setGroupName(5, "OH");
+        focusManager.setGroupName(6, "FX");
+
+        interface.paramTransformHook = [this](std::vector<float>& p) {
+            focusManager.applyInPlace(p);
+        };
     }
 
     String getHelpTitle() { return "TR-6S Mode"; }
@@ -92,22 +118,47 @@ public:
         midi_interf->Setup(TRxSAudioApp<>::kN_Params);
         midi_interf->SetMIDISendChannel(10);  // TR-6S default channel
         midi_interf->SetParamCCNumbers(kTR6SDefaultCCs);
-        // No paramOutputHook — default SendParamsAsMIDICC() path is used
         interface.bindMIDI(midi_interf);
     }
 
     void addViews() {
+        auto updateActiveDims = [this]() {
+            uint32_t mask = focusManager.getSelectedMask();
+            constexpr size_t N = TRxSAudioApp<>::kN_Params;
+            std::vector<bool> active(N);
+            for (size_t i = 0; i < N; i++)
+                active[i] = (mask == 0) || ((focusManager.paramGroupMask[i] & mask) != 0);
+            interface.setActiveDims(active);
+        };
+        updateActiveDims();
+
+        auto focusView = std::make_shared<BlockSelectView>(
+            "Focus", TFT_DARKGREY, 7, 60, 60, TFT_WHITE,
+            std::vector<String>{"BD", "SD", "LT", "HC", "CH", "OH", "FX"},
+            TFT_GREENYELLOW, 2);
+
+        focusView->SetOnSelectCallback([this, focusView, updateActiveDims](size_t id) {
+            size_t groupIdx = id - 1;
+            if (!((presentGroupsMask_ >> groupIdx) & 1u)) return;
+            uint32_t newMask = focusManager.getSelectedMask() ^ (1u << groupIdx);
+            focusManager.setFocus(newMask, interface.getLastAction());
+            focusView->toggleAlt(groupIdx);
+            updateActiveDims();
+        });
+        MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
+
         auto ccView = std::make_shared<CCSelectView>(TRxSAudioApp<>::kN_Params, "CC Assign");
         ccView->setOptions(kTR6SCCOptions);
 
-        // Load persisted assignments, falling back to defaults
         auto saved = loadCCAssignments();
         ccView->setSelectedCCs(saved);
         midi_interf->SetParamCCNumbers(saved);
+        recomputeFocusGroups(saved, focusView, updateActiveDims);
 
-        ccView->setOnChangeCallback([this](const std::vector<uint8_t>& ccs) {
+        ccView->setOnChangeCallback([this, focusView, updateActiveDims](const std::vector<uint8_t>& ccs) {
             midi_interf->SetParamCCNumbers(ccs);
             saveCCAssignments(ccs);
+            recomputeFocusGroups(ccs, focusView, updateActiveDims);
         });
         MEMLNaut::Instance()->disp->AddView(ccView);
         interface.addInputSourceView(false);
@@ -120,6 +171,43 @@ public:
 
 private:
     static constexpr const char* kCCFile = "/trxs_cc.bin";
+
+    static uint32_t ccToGroupMask(uint8_t cc) {
+        switch (cc) {
+            case 96:                              return kTRxSFocusBD;
+            case 97: case 25: case 28: case 29:  return kTRxSFocusSD;
+            case 102: case 46: case 47: case 48: return kTRxSFocusLT;
+            case 106: case 58: case 59: case 60: return kTRxSFocusHC;
+            case 107: case 61: case 62: case 63: return kTRxSFocusCH;
+            case 108: case 80: case 81: case 82: return kTRxSFocusOH;
+            case 91: case 16: case 17: case 18:
+            case 19: case 15: case 71: case 9: case 70: return kTRxSFocusFX;
+            default: return 0;
+        }
+    }
+
+    void recomputeFocusGroups(const std::vector<uint8_t>& ccs,
+                              std::shared_ptr<BlockSelectView> focusView,
+                              std::function<void()> updateActiveDims) {
+        std::array<uint32_t, TRxSAudioApp<>::kN_Params> masks{};
+        for (size_t i = 0; i < ccs.size() && i < masks.size(); i++)
+            masks[i] = ccToGroupMask(ccs[i]);
+        focusManager.setParamGroups(masks);
+
+        presentGroupsMask_ = 0;
+        for (auto m : masks) presentGroupsMask_ |= m;
+
+        uint32_t currentSel = focusManager.getSelectedMask();
+        uint32_t validSel   = currentSel & presentGroupsMask_;
+        if (validSel != currentSel) {
+            focusManager.setFocus(validSel, interface.getLastAction());
+            for (size_t i = 0; i < 7; i++) {
+                if (((currentSel >> i) & 1u) && !((validSel >> i) & 1u))
+                    focusView->setAltState(i, false);
+            }
+        }
+        updateActiveDims();
+    }
 
     std::vector<uint8_t> loadCCAssignments() {
         FILE* f = fopen(kCCFile, "rb");
