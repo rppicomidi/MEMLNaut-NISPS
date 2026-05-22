@@ -26,7 +26,7 @@
 // #define MODE_CHANNELSTRIP
 // #define MODE_SOUNDANALYSISMIDI
 // #define MODE_XIASRI
-#define MODE_BREAKOR
+// #define MODE_BREAKOR
 // #define MODE_BRAYKORE
 // #define MODE_VERBFX
 // #define MODE_SAXFX
@@ -34,7 +34,8 @@
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
 // #define MODE_D50
-  
+#define MODE_TRXS
+
 #include "modes/MEMLNautMode.hpp"
 #ifdef MODE_PAFSYNTH
   #include "modes/MEMLNautModePAFSynth.hpp"
@@ -83,6 +84,10 @@
 #ifdef MODE_D50
   #include "modes/MEMLNautModeD50.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeD50
+#endif
+#ifdef MODE_TRXS
+  #include "modes/MEMLNautModeTRxS.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeTRxS
 #endif
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
