@@ -31,12 +31,13 @@
 // #define MODE_BRAYKORE
 // #define MODE_VERBFX
 // #define MODE_SAXFX
+#define MODE_CHUNKYBITS
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
 // #define MODE_D50
 // #define MODE_TRXS
-#define MODE_DJFX
+// #define MODE_DJFX
 // #define MODE_MOPHO
 // #define MODE_MICROQ
 
@@ -72,6 +73,10 @@
 #ifdef MODE_SAXFX
   #include "modes/MEMLNautModeSaxFX.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeSaxFX
+#endif
+#ifdef MODE_CHUNKYBITS
+  #include "modes/MEMLNautModeChunkyBits.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeChunkyBits
 #endif
 #ifdef MODE_BUNTY
   #include "modes/MEMLNautModeBunty.hpp"
