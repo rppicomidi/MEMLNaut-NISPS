@@ -59,7 +59,7 @@ public:
         d50Output->setParamMappings({
             // Upper Partial 1 temp area: base [00 00 00], offsets from D50 MIDI impl §4-4
             //                  addrHi  addrMid  addrLo  min  max
-            { 0x00,   0x00,    0x0C,   0,   100 },  // TVF Cutoff Frequency
+            { 0x00,   0x00,    0x0C,   0,   100 },  // TVF Cutoff Frequency (0=dark/closed, 100=bright/open)
         });
 
         interface.bindMIDI(midi_interf);

@@ -24,7 +24,7 @@
 
 //modes — uncomment exactly ONE to select the active mode:
 // #define MODE_PAFSYNTH
-// #define MODE_CHANNELSTRIP
+// #define MODE_CHANNELSTRIPwew
 // #define MODE_SOUNDANALYSISMIDI
 // #define MODE_XIASRI
 // #define MODE_BREAKOR
@@ -35,7 +35,10 @@
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
 // #define MODE_D50
-#define MODE_TRXS
+// #define MODE_TRXS
+#define MODE_DJFX
+// #define MODE_MOPHO
+// #define MODE_MICROQ
 
 #include "modes/MEMLNautMode.hpp"
 #ifdef MODE_PAFSYNTH
@@ -89,6 +92,18 @@
 #ifdef MODE_TRXS
   #include "modes/MEMLNautModeTRxS.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeTRxS
+#endif
+#ifdef MODE_DJFX
+  #include "modes/MEMLNautModeDJFX.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeDJFX
+#endif
+#ifdef MODE_MICROQ
+  #include "modes/MEMLNautModeMicroQ.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeMicroQ
+#endif
+#ifdef MODE_MOPHO
+  #include "modes/MEMLNautModeMopho.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeMopho
 #endif
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
