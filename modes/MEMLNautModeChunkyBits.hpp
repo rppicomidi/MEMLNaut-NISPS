@@ -8,6 +8,7 @@
 #include "../src/memllib/examples/InterfaceRL.hpp"
 #include "../src/memllib/PicoDefs.hpp"
 #include "../MachineListeningMixin.hpp"
+#include "../src/memllib/hardware/memlnaut/MEMLNaut.hpp"
 
 class MEMLNautModeChunkyBits {
 public:
@@ -56,6 +57,18 @@ public:
     }
 
     void addViews() {
+        auto waveformView = std::make_shared<RotarySelectView>("Waveform");
+        std::vector<String> waveNames;
+        for (size_t i = 0; i < ChunkyBitsAudioApp<>::kNumWaveforms; ++i)
+            waveNames.push_back(ChunkyBitsAudioApp<>::kWaveformNames[i]);
+        waveformView->setOptions(std::span<String>(waveNames.data(), waveNames.size()));
+        waveformView->setSelection(0);
+        waveformView->setNewSelectionCallback([](size_t idx) {
+            if (idx < ChunkyBitsAudioApp<>::kNumWaveforms)
+                audioAppChunkyBits.setWaveformQueued(
+                    static_cast<ChunkyBitsAudioApp<>::Waveform>(idx));
+        });
+        MEMLNaut::Instance()->disp->AddView(waveformView);
         interface.addInputSourceView();
     }
 

@@ -31,13 +31,13 @@
 // #define MODE_BRAYKORE
 // #define MODE_VERBFX
 // #define MODE_SAXFX
-#define MODE_CHUNKYBITS
+// #define MODE_CHUNKYBITS
 // #define MODE_BUNTY
 // #define MODE_ELYSIAMORFS
 // #define MODE_MEMLCELIUM
 // #define MODE_D50
 // #define MODE_TRXS
-// #define MODE_DJFX
+#define MODE_DJFX
 // #define MODE_MOPHO
 // #define MODE_MICROQ
 

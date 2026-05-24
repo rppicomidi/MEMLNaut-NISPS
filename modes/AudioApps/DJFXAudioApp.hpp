@@ -6,7 +6,7 @@
 #include "../../src/memllib/synth/GrainDelayI16.hpp"
 #include "../../src/memllib/synth/ModFXI16.hpp"
 
-template<size_t NPARAMS=48>
+template<size_t NPARAMS=46>
 class DJFXAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
@@ -20,12 +20,11 @@ public:
     static constexpr uint32_t kFX_Grain1     = 1u << 3;
     static constexpr uint32_t kFX_Grain2     = 1u << 4;
     static constexpr uint32_t kFX_Delay      = 1u << 5;
-    static constexpr uint32_t kFX_Crush      = 1u << 6;
-    static constexpr uint32_t kFX_Downsample = 1u << 7;
-    static constexpr uint32_t kFX_Stutter    = 1u << 8;
-    static constexpr uint32_t kFX_RingMod    = 1u << 9;
+    static constexpr uint32_t kFX_Downsample = 1u << 6;
+    static constexpr uint32_t kFX_Stutter    = 1u << 7;
+    static constexpr uint32_t kFX_RingMod    = 1u << 8;
 
-    volatile uint32_t enableMask_{kFX_Grain1 | kFX_Crush};
+    volatile uint32_t enableMask_{kFX_Grain1};
 
     queue_t wetdryQueue;
     queue_t bpmQueue;
@@ -70,8 +69,6 @@ public:
             mix = rvHP_.play(mix);
 
         // Tone shapers — at the head so they colour the source before any time-based FX
-        if ((en & kFX_Crush) && crushMix_ > 0.f)
-            mix = bitCrusher_.process(mix, crushBits_, 1.f, crushMix_);
         if ((en & kFX_Downsample) && downsampleMix_ > 0.f)
             mix = downSampler_.process(mix, 16.f, downsampleRate_, downsampleMix_);
         if ((en & kFX_RingMod) && ringModMix_ > 0.f)
@@ -241,33 +238,29 @@ public:
         apLFORate_  = 0.1f + params[34] * 9.9f;
         apLFODepth_ = params[35] * 500.f;
 
-        // params 36-37: bit crusher (bits 2-16, mix)
-        crushBits_ = 2.f + params[36] * 14.f;
-        crushMix_  = effectMix(params[37]);
+        // params 36-37: downsampler (rateDiv 1-32, mix)
+        downsampleRate_ = 1.f + params[36] * 31.f;
+        downsampleMix_  = effectMix(params[37]);
 
-        // params 38-39: downsampler (rateDiv 1-32, mix)
-        downsampleRate_ = 1.f + params[38] * 31.f;
-        downsampleMix_  = effectMix(params[39]);
-
-        // params 40-42: stutter gate (subdivision, duty cycle, mix)
+        // params 38-40: stutter gate (subdivision, duty cycle, mix)
         {
             static const float kSubdivisions[] = {1.f, 2.f, 4.f, 8.f, 16.f};
-            const int idx = static_cast<int>(params[40] * 4.99f);
+            const int idx = static_cast<int>(params[38] * 4.99f);
             const float subdiv = kSubdivisions[idx];
             stutterPeriod_ = (sampleRate_ * 60.f) / (bpm_ * subdiv);
         }
-        stutterDuty_ = 0.05f + params[41] * 0.9f;
-        stutterMix_  = effectMix(params[42]);
+        stutterDuty_ = 0.05f + params[39] * 0.9f;
+        stutterMix_  = effectMix(params[40]);
 
-        // params 43-44: ring mod (freq 1-2000 Hz, mix)
-        ringModFreq_ = powf(2000.f, params[43]);
-        ringModMix_  = effectMix(params[44]);
+        // params 41-42: ring mod (freq 1-2000 Hz, mix)
+        ringModFreq_ = powf(2000.f, params[41]);
+        ringModMix_  = effectMix(params[42]);
 
-        // params 45-47: delay feedback bandpass (freq 40–16kHz exp, Q 0.5–10, mix)
+        // params 43-45: delay feedback bandpass (freq 40–16kHz exp, Q 0.5–10, mix)
         {
-            const float freq = 40.f * powf(400.f, params[45]);
-            const float q    = 0.5f + params[46] * 9.5f;
-            delayBPMix_      = effectMix(params[47]);
+            const float freq = 40.f * powf(400.f, params[43]);
+            const float q    = 0.5f + params[44] * 9.5f;
+            delayBPMix_      = effectMix(params[45]);
             delayBP_.set(maxiBiquad::filterTypes::BANDPASS, freq, q, 0.f);
         }
     }
@@ -287,7 +280,6 @@ protected:
     FlangerI16<1024>  flanger_;
     ChorusI16<4096>   chorus_;
     AllpassI16<4096>  allpass_;
-    BitCrusher        bitCrusher_;
     BitCrusher        downSampler_;
     RingMod           ringMod_;
     StutterGate       stutterGate_;
@@ -308,7 +300,6 @@ protected:
     float sampleRate_{48000.f};
     float apDelay_{500.f}, apG_{0.5f}, apMix_{0.f};
     float apLFORate_{1.f}, apLFODepth_{0.f};
-    float crushBits_{16.f}, crushMix_{0.f};
     float downsampleRate_{1.f}, downsampleMix_{0.f};
     float stutterPeriod_{12000.f}, stutterDuty_{0.5f}, stutterMix_{0.f};
     float ringModFreq_{100.f}, ringModMix_{0.f};

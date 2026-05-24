@@ -16,8 +16,8 @@
 #include "../MachineListeningMixin.hpp"
 
 
-// One focus group per effect — 10 groups, matching the param layout in DJFXAudioApp.
-static constexpr size_t kDJFX_NGroups = 10;
+// One focus group per effect — 9 groups, matching the param layout in DJFXAudioApp.
+static constexpr size_t kDJFX_NGroups = 9;
 
 class MEMLNautModeDJFX {
 public:
@@ -46,6 +46,21 @@ public:
         });
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);
         interface.setModeInfo("djfx", "DJFX");
+
+        interface.setExtraSaveCallback([this]() -> std::vector<uint8_t> {
+            std::vector<uint8_t> data(4);
+            const uint32_t mask = audioAppDJFX.enableMask_;
+            memcpy(data.data(), &mask, 4);
+            return data;
+        });
+        interface.setExtraLoadCallback([this](const uint8_t* data, uint16_t size, uint16_t) {
+            if (size >= 4) {
+                uint32_t mask;
+                memcpy(&mask, data, 4);
+                audioAppDJFX.enableMask_ = mask;
+            }
+        });
+
         interfacePtr = make_non_owning(interface);
 
         // Name each focus group.
@@ -55,12 +70,11 @@ public:
         focusManager.setGroupName(3, "Flgr");
         focusManager.setGroupName(4, "Chr");
         focusManager.setGroupName(5, "AP");
-        focusManager.setGroupName(6, "Crsh");
-        focusManager.setGroupName(7, "Dsp");
-        focusManager.setGroupName(8, "Stt");
-        focusManager.setGroupName(9, "Rng");
+        focusManager.setGroupName(6, "Dsp");
+        focusManager.setGroupName(7, "Stt");
+        focusManager.setGroupName(8, "Rng");
 
-        // Assign each of the 48 params to its group (matching ProcessParams layout).
+        // Assign each of the 46 params to its group (matching ProcessParams layout).
         std::array<uint32_t, DJFXAudioApp<>::kN_Params> masks = {
             // 0-7: Grain Delay 1
             1u<<0, 1u<<0, 1u<<0, 1u<<0, 1u<<0, 1u<<0, 1u<<0, 1u<<0,
@@ -76,15 +90,13 @@ public:
             1u<<4, 1u<<4, 1u<<4, 1u<<4, 1u<<4,
             // 31-35: Allpass + LFO
             1u<<5, 1u<<5, 1u<<5, 1u<<5, 1u<<5,
-            // 36-37: Bit Crusher
+            // 36-37: Downsampler
             1u<<6, 1u<<6,
-            // 38-39: Downsampler
-            1u<<7, 1u<<7,
-            // 40-42: Stutter Gate
-            1u<<8, 1u<<8, 1u<<8,
-            // 43-44: Ring Mod
-            1u<<9, 1u<<9,
-            // 45-47: Delay feedback bandpass (freq, Q, mix)
+            // 38-40: Stutter Gate
+            1u<<7, 1u<<7, 1u<<7,
+            // 41-42: Ring Mod
+            1u<<8, 1u<<8,
+            // 43-45: Delay feedback bandpass (freq, Q, mix)
             1u<<2, 1u<<2, 1u<<2
         };
         focusManager.setParamGroups(masks);
@@ -122,11 +134,10 @@ public:
         };
         updateActiveDims();
 
-        // Focus view — 13 toggle buttons, one per effect group.
-        // 2 rows × 7 cols, buttonWidth=35 fits in 320px.
+        // Focus view — 9 toggle buttons, one per effect group.
         auto focusView = std::make_shared<BlockSelectView>(
             "Focus", TFT_DARKGREY, (int)kDJFX_NGroups, 35, 55, TFT_WHITE,
-            std::vector<String>{"Gr1","Gr2","Dly","Flgr","Chr","AP","Crsh","Dsp","Stt","Rng"},
+            std::vector<String>{"Gr1","Gr2","Dly","Flgr","Chr","AP","Dsp","Stt","Rng"},
             TFT_GREENYELLOW, 1 /* fontNum */);
 
         focusView->SetOnSelectCallback([this, focusView, updateActiveDims](size_t id) {

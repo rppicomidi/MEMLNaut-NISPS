@@ -16,6 +16,10 @@ public:
         mlAnalysis_.ReinitFilters();
     }
     __force_inline void analyse(stereosample_t x) {
+        if (!iface_) return;
+        auto src = iface_->getInputSource();
+        if (src != InterfaceRL::INPUT_SOURCE::MACHINE_LISTENING &&
+            src != InterfaceRL::INPUT_SOURCE::COMBINED) return;
         union {
             XiasriAnalysis::parameters_t p;
             float v[XiasriAnalysis::kN_Params];

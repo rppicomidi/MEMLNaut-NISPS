@@ -15,17 +15,34 @@ public:
     static constexpr size_t  kArpLen      = 4;
     static constexpr float   kArpBPM      = 90.f;
 
+    enum class Waveform : uint8_t {
+        Saw = 0, Square, Triangle, FallingSaw, Sine,
+        HalfRectSine, Trapezoid, AsymTriangle, Staircase,
+        COUNT
+    };
+    static constexpr size_t kNumWaveforms = static_cast<size_t>(Waveform::COUNT);
+    static constexpr const char* kWaveformNames[kNumWaveforms] = {
+        "Saw", "Square", "Triangle", "Falling Saw", "Sine",
+        "Half-rect Sine", "Trapezoid", "Asym Triangle", "Staircase"
+    };
+
     queue_t noteOnQueue;
     queue_t feedbackFactorQueue;
     queue_t envQueue;
+    queue_t waveformQueue;
 
     ChunkyBitsAudioApp() : AudioAppBase<NPARAMS>() {
         queue_init(&noteOnQueue, 2, 4);
         queue_init(&feedbackFactorQueue, sizeof(float), 1);
         queue_init(&envQueue, sizeof(float), 1);
+        queue_init(&waveformQueue, sizeof(uint8_t), 1);
     }
 
     void setFeedbackFactorQueued(float v) { queue_try_add(&feedbackFactorQueue, &v); }
+    void setWaveformQueued(Waveform w) {
+        uint8_t v = static_cast<uint8_t>(w);
+        queue_try_add(&waveformQueue, &v);
+    }
 
     AudioDriver::codec_config_t GetDriverConfig() const override {
         return {
@@ -69,27 +86,39 @@ public:
         grainDelay1_.setup(sr);
         grainDelay2_.setup(sr);
         grainDelay3_.setup(sr);
-        grainDelay1_.fillWithStaircase(mtof(kArpNotes[0]));
-        grainDelay2_.fillWithStaircase(mtof(kArpNotes[0]));
+        lastFillFreq_ = mtof(kArpNotes[0]);
+        fillBuffers(lastFillFreq_);
         env_.setup(50.f, 700.f, 0.f, 1.f, sr);
+        if (!pitchLUTReady_) {
+            for (size_t i = 0; i < kPitchLUTSize; ++i)
+                pitchLUT_[i] = exp2f((float)i / (kPitchLUTSize - 1) * 2.f - 1.f);
+            pitchLUTReady_ = true;
+        }
     }
 
     __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
     {
+        {
+            uint8_t w;
+            if (queue_try_remove(&waveformQueue, &w)) {
+                waveform_ = static_cast<Waveform>(w);
+                fillBuffers(lastFillFreq_);
+            }
+        }
+
         // Arpeggiator trigger — set by Process() ISR, consumed here
         if (arpTrigger_) {
             arpTrigger_ = false;
-            grainDelay1_.fillWithStaircase(arpFreq_);
-            grainDelay2_.fillWithStaircase(arpFreq_);
+            lastFillFreq_ = arpFreq_;
+            fillBuffers(lastFillFreq_);
             env_.trigger(1.f);
         }
 
         // External MIDI note-on overrides arp for this step
         uint8_t msg[2];
         while (queue_try_remove(&noteOnQueue, msg)) {
-            const float freq = mtof(msg[0]);
-            grainDelay1_.fillWithStaircase(freq);
-            grainDelay2_.fillWithStaircase(freq);
+            lastFillFreq_ = mtof(msg[0]);
+            fillBuffers(lastFillFreq_);
             env_.trigger(1.f);
         }
 
@@ -102,14 +131,14 @@ public:
         grainDelay1_.setGrainLengthMs(10.f + params[0] * 490.f);
         grainDelay1_.setStartTimeMs(  10.f + params[1] * 320.f);
         grainDelay1_.setFeedback(   fminf(params[2] * feedbackFactor_, 1.f) * 0.95f);
-        grainDelay1_.setPitch(      powf(2.f, params[3] * 2.f - 1.f));
+        grainDelay1_.setPitch(      pitchRatio(params[3]));
         grainDelay1_.setPitchSpread(params[4] * 0.3f);
 
         // params 5-7, 13-14: grain delay 3 (captures live output, feeds back into 1+2)
         grainDelay3_.setGrainLengthMs(10.f + params[5] * 490.f);
         grainDelay3_.setStartTimeMs(  10.f + params[6] * 320.f);
         grainDelay3_.setFeedback(   fminf(params[7] * feedbackFactor_, 1.f) * 0.95f);
-        grainDelay3_.setPitch(      powf(2.f, params[13] * 2.f - 1.f));
+        grainDelay3_.setPitch(      pitchRatio(params[13]));
         grainDelay3_.setPitchSpread(params[14] * 0.3f);
         // param 15: grain3 → grain1 cross-feedback; param 18: grain3 → grain2 cross-feedback
         feedbackAmount1_ = params[15] * feedbackFactor_;
@@ -119,7 +148,7 @@ public:
         grainDelay2_.setGrainLengthMs(10.f + params[8] * 490.f);
         grainDelay2_.setStartTimeMs(  10.f + params[9] * 320.f);
         grainDelay2_.setFeedback(   fminf(params[10] * feedbackFactor_, 1.f) * 0.95f);
-        grainDelay2_.setPitch(      powf(2.f, params[11] * 2.f - 1.f));
+        grainDelay2_.setPitch(      pitchRatio(params[11]));
         grainDelay2_.setPitchSpread(params[12] * 0.3f);
 
         // param 16: crossfade Gr1 ↔ Gr2
@@ -135,6 +164,24 @@ protected:
     GrainDelayI16<16384> grainDelay1_;
     GrainDelayI16<16384> grainDelay2_;
     GrainDelayI16<16384> grainDelay3_;  // captures output of 1+2, feeds back into them
+
+    Waveform waveform_     {Waveform::Saw};
+    float lastFillFreq_    {0.f};
+
+    void fillBuffers(float freq) {
+        switch (waveform_) {
+            case Waveform::Saw:          grainDelay1_.fillWithSaw(freq);          grainDelay2_.fillWithSaw(freq);          break;
+            case Waveform::Square:       grainDelay1_.fillWithSquare(freq);       grainDelay2_.fillWithSquare(freq);       break;
+            case Waveform::Triangle:     grainDelay1_.fillWithTriangle(freq);     grainDelay2_.fillWithTriangle(freq);     break;
+            case Waveform::FallingSaw:   grainDelay1_.fillWithFallingSaw(freq);   grainDelay2_.fillWithFallingSaw(freq);   break;
+            case Waveform::Sine:         grainDelay1_.fillWithSine(freq);         grainDelay2_.fillWithSine(freq);         break;
+            case Waveform::HalfRectSine: grainDelay1_.fillWithHalfRectSine(freq); grainDelay2_.fillWithHalfRectSine(freq); break;
+            case Waveform::Trapezoid:    grainDelay1_.fillWithTrapezoid(freq);    grainDelay2_.fillWithTrapezoid(freq);    break;
+            case Waveform::AsymTriangle: grainDelay1_.fillWithAsymTriangle(freq); grainDelay2_.fillWithAsymTriangle(freq); break;
+            case Waveform::Staircase:    grainDelay1_.fillWithStaircase(freq);    grainDelay2_.fillWithStaircase(freq);    break;
+            default: break;
+        }
+    }
 
     float grainDelay3Out_  {0.f};
     float feedbackAmount1_ {0.f};
@@ -154,6 +201,17 @@ protected:
     // AR envelope (triggered on each note, value sent to Core 0 as NN input)
     ADSRLite     env_;
     float        envVal_      {0.f};
+
+    static constexpr size_t kPitchLUTSize = 256;
+    inline static float pitchLUT_[kPitchLUTSize] = {};
+    inline static bool  pitchLUTReady_ = false;
+
+    static __force_inline float pitchRatio(float param) {
+        const float idx = param * (kPitchLUTSize - 1);
+        const size_t i  = (size_t)idx;
+        if (i >= kPitchLUTSize - 1) return pitchLUT_[kPitchLUTSize - 1];
+        return pitchLUT_[i] + (idx - (float)i) * (pitchLUT_[i + 1] - pitchLUT_[i]);
+    }
 
     static __force_inline float fasttanh(float x) {
         const float x2 = x * x;
