@@ -52,16 +52,15 @@ private:
         int bx = area.x + (area.w * 3) / 4;
         int bw = area.w / 4;
         int bh = area.h - kStatusBarHeight;
-        int col = tapPressed_ ? TFT_PURPLE : TFT_GREEN;
-        TFT_eSprite sprite(scr);
-        sprite.createSprite(bw, bh);
-        sprite.fillSprite(col);
-        sprite.drawRect(0, 0, bw, bh, TFT_WHITE);
-        sprite.setTextColor(TFT_WHITE, col);
-        sprite.setTextFont(2);
-        sprite.drawString(String((int)roundf(bpm_)) + " bpm", 4, bh / 2 - 8);
-        sprite.pushSprite(bx, area.y);
-        sprite.deleteSprite();
+        uint16_t col = tapPressed_ ? TFT_PURPLE : TFT_GREEN;
+        // Draw directly (no large sprite alloc — that failed intermittently and left the
+        // button blank). Reliable and cheap, so it repaints fine on every OnDraw.
+        scr->fillRect(bx, area.y, bw, bh, col);
+        scr->drawRect(bx, area.y, bw, bh, TFT_WHITE);
+        scr->setTextFont(2);
+        scr->setTextColor(TFT_WHITE, col);
+        scr->setTextDatum(TL_DATUM);
+        scr->drawString(String((int)roundf(bpm_)) + " bpm", bx + 4, area.y + bh / 2 - 8);
     }
 
     void recordTap() {

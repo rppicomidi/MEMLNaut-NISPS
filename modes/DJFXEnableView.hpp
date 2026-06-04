@@ -4,9 +4,9 @@
 
 class DJFXEnableView : public ViewBase {
 public:
-    static constexpr size_t kNFX   = 9;
+    static constexpr size_t kNFX   = 10;
     static constexpr size_t kNCols = 4;
-    static constexpr size_t kNRows = (kNFX + kNCols - 1) / kNCols;  // 3 rows, last row has 1 cell
+    static constexpr size_t kNRows = (kNFX + kNCols - 1) / kNCols;  // 3 rows, last row has 2 cells
 
     DJFXEnableView(String name, volatile uint32_t* mask)
         : ViewBase(name), mask_(mask) {}
@@ -37,7 +37,7 @@ private:
         static const char* kNames[kNFX] = {
             "Allpass", "Flanger", "Chorus",  "Grain 1",
             "Grain 2", "Delay",   "Downsamp","Stutter",
-            "Ring Mod"
+            "Ring Mod","Reverb"
         };
         return idx < kNFX ? kNames[idx] : "";
     }

@@ -16,8 +16,8 @@
 #include "../MachineListeningMixin.hpp"
 
 
-// One focus group per effect — 9 groups, matching the param layout in DJFXAudioApp.
-static constexpr size_t kDJFX_NGroups = 9;
+// One focus group per effect — 10 groups, matching the param layout in DJFXAudioApp.
+static constexpr size_t kDJFX_NGroups = 10;
 
 class MEMLNautModeDJFX {
 public:
@@ -73,8 +73,9 @@ public:
         focusManager.setGroupName(6, "Dsp");
         focusManager.setGroupName(7, "Stt");
         focusManager.setGroupName(8, "Rng");
+        focusManager.setGroupName(9, "Rev");
 
-        // Assign each of the 46 params to its group (matching ProcessParams layout).
+        // Assign each of the 57 params to its group (matching ProcessParams layout).
         std::array<uint32_t, DJFXAudioApp<>::kN_Params> masks = {
             // 0-7: Grain Delay 1
             1u<<0, 1u<<0, 1u<<0, 1u<<0, 1u<<0, 1u<<0, 1u<<0, 1u<<0,
@@ -97,7 +98,9 @@ public:
             // 41-42: Ring Mod
             1u<<8, 1u<<8,
             // 43-45: Delay feedback bandpass (freq, Q, mix)
-            1u<<2, 1u<<2, 1u<<2
+            1u<<2, 1u<<2, 1u<<2,
+            // 46-56: Reverb
+            1u<<9, 1u<<9, 1u<<9, 1u<<9, 1u<<9, 1u<<9, 1u<<9, 1u<<9, 1u<<9, 1u<<9, 1u<<9
         };
         focusManager.setParamGroups(masks);
 
@@ -134,11 +137,13 @@ public:
         };
         updateActiveDims();
 
-        // Focus view — 9 toggle buttons, one per effect group.
+        // Focus view — 10 toggle buttons, one per effect group.
+        // 10 buttons => 2 rows x 5 cols. Maximised for 320x240: width 5*53+50=315<=319,
+        // height 2*76+20=172 leaves room for the message line.
         auto focusView = std::make_shared<BlockSelectView>(
-            "Focus", TFT_DARKGREY, (int)kDJFX_NGroups, 35, 55, TFT_WHITE,
-            std::vector<String>{"Gr1","Gr2","Dly","Flgr","Chr","AP","Dsp","Stt","Rng"},
-            TFT_GREENYELLOW, 1 /* fontNum */);
+            "Focus", TFT_DARKGREY, (int)kDJFX_NGroups, 53, 76, TFT_WHITE,
+            std::vector<String>{"Gr1","Gr2","Dly","Flgr","Chr","AP","Dsp","Stt","Rng","Rev"},
+            TFT_GREENYELLOW, 2 /* fontNum */);
 
         focusView->SetOnSelectCallback([this, focusView, updateActiveDims](size_t id) {
             const size_t groupIdx = id - 1;
@@ -149,7 +154,7 @@ public:
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
 
-        interface.addInputSourceView();
+        interface.addInputSourceView(false);  // no MIDI CC Out screen for this mode
 
         auto enableView = std::make_shared<DJFXEnableView>("FX Enable", &audioAppDJFX.enableMask_);
         MEMLNaut::Instance()->disp->AddView(enableView);
@@ -162,15 +167,18 @@ public:
 
     __force_inline void loop() {
         audioAppDJFX.loop();
-        const auto& inputs = interface.getControlInput();
-        const size_t n = interface.getActiveInputCount();
-        float maxDev = 0.f;
-        for (size_t i = 0; i < n && i < inputs.size(); ++i) {
-            const float d = fabsf(inputs[i] - 0.5f);
-            if (d > maxDev) maxDev = d;
+        const auto src = interface.getInputSource();
+        if (src == InterfaceRL::INPUT_SOURCE::JOYSTICK_3D ||
+            src == InterfaceRL::INPUT_SOURCE::JOYSTICK_4D) {
+            const auto& inputs = interface.getControlInput();
+            const size_t n = interface.getActiveInputCount();
+            float maxDev = 0.f;
+            for (size_t i = 0; i < n && i < inputs.size(); ++i) {
+                const float d = fabsf(inputs[i] - 0.5f);
+                if (d > maxDev) maxDev = d;
+            }
+            audioAppDJFX.setWetDryQueued(fminf(maxDev * 2.f, 1.f));
         }
-        const float wetdry = fminf(maxDev * 2.f, 1.f);
-        audioAppDJFX.setWetDryQueued(wetdry);
     }
 
     __force_inline void analyse(stereosample_t x) { mlMixin.analyse(x); }

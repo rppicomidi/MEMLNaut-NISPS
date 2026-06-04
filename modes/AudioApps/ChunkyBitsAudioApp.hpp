@@ -64,7 +64,7 @@ public:
             arpTrigger_ = true;
         }
 
-        envVal_ = env_.play() * 0.0f;
+        envVal_ = env_.play();
 
         float g1 = grainDelay1_.process(0.f, grainDelay3Out_ * feedbackAmount1_);
         float g2 = grainDelay2_.process(0.f, grainDelay3Out_ * feedbackAmount2_);
@@ -161,9 +161,9 @@ public:
     }
 
 protected:
-    GrainDelayI16<16384> grainDelay1_;
-    GrainDelayI16<16384> grainDelay2_;
-    GrainDelayI16<16384> grainDelay3_;  // captures output of 1+2, feeds back into them
+    GrainDelayI16<16384, 2> grainDelay1_;
+    GrainDelayI16<16384, 2> grainDelay2_;
+    GrainDelayI16<16384, 2> grainDelay3_;  // captures output of 1+2, feeds back into them
 
     Waveform waveform_     {Waveform::Saw};
     float lastFillFreq_    {0.f};

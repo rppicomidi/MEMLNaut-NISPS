@@ -1,266 +1,237 @@
 #ifndef __SAXFX_AUDIO_APP_HPP__
 #define __SAXFX_AUDIO_APP_HPP__
 
-#include "../../src/memllib/audio/AudioAppBase.hpp" // Added missing include
-
+#include "../../src/memllib/audio/AudioAppBase.hpp"
 #include <cstddef>
 #include <cstdint>
-#include <memory> 
-
-//#include "src/memllib/interface/InterfaceBase.hpp" // Added missing include
-
-#include <span>
-#include "../../voicespaces/VoiceSpaces.hpp"
-#include "../../voicespaces/VerbFX/basic.hpp"
-#include "../../voicespaces/VerbFX/resonant.hpp"
-#include "../../voicespaces/VerbFX/soft.hpp"
-#include "../../voicespaces/VerbFX/cathedral.hpp"
-#include "../../voicespaces/VerbFX/shimmer.hpp"
-#include "../../voicespaces/VerbFX/chamber.hpp"
-#include "../../voicespaces/VerbFX/metallic.hpp"
-#include "../../voicespaces/VerbFX/granular.hpp"
-#include "../../voicespaces/VerbFX/diffuse.hpp"
-#include "../../voicespaces/VerbFX/dark.hpp"
-#include "../../voicespaces/VerbFX/bright.hpp"
-#include "../../voicespaces/VerbFX/harmonic.hpp"
-#include "../../src/memllib/synth/OnePoleSmoother.hpp"
+#include <memory>
 #include "../../src/memllib/synth/maximilian.h"
 #include "../../src/memllib/synth/GrainDelayI16.hpp"
-#include "../../src/daisysp/Effects/pitchshifter.h"
-
-
-
-
+#include "../../src/memllib/synth/ReverbI16.hpp"
+#include "../../voicespaces/VoiceSpaces.hpp"
 
 template<size_t NPARAMS=47>
 class SaxFXAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
     static constexpr size_t kN_Params = NPARAMS;
-    static constexpr size_t nVoiceSpaces=12;
-
-
-    std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
-    
-    VoiceSpaceFn<NPARAMS> currentVoiceSpace;
+    static constexpr size_t nVoiceSpaces = 4;
 
     enum class controlMessages {
-        MSG_ENABLE_FILTERBANK=0,
-        MSG_ENABLE_REVERB,
-        MSG_ENABLE_SHORT_DELAY,
-        MSG_ENABLE_MEDIUM_DELAY,
-        MSG_ENABLE_LONG_DELAY,
-        MSG_ENABLE_DELAY_TO_REVERB,
+        MSG_ENABLE_REVERB = 0,
+        MSG_ENABLE_GRAIN1,
+        MSG_ENABLE_GRAIN2,
+        MSG_ENABLE_GRAIN3,
     };
 
     queue_t controlMessageQueue;
-    queue_t wetdryQueue;
 
-    void setWetDryQueued(float value) {
-        queue_try_add(&wetdryQueue, &value);
-    }
+    bool enableReverb = true;
+    bool enableGrain1 = true;
+    bool enableGrain2 = true;
+    bool enableGrain3 = true;
 
-    bool enableFilterbank=true;
-    bool enableReverb=true;
-    bool enableShortDelay=true;
-    bool enableMediumDelay=true;
-    bool enableLongDelay=true;
-    bool enableDelayToReverb=true;
-
-
-    AudioDriver::codec_config_t GetDriverConfig() const override {
-        return {
-            .mic_input = true,
-            .line_level = 3,
-            .mic_gain_dB = 0,
-            .output_volume = 0.97f
-        };
-    }
+    std::array<VoiceSpace<NPARAMS>, nVoiceSpaces> voiceSpaces;
+    VoiceSpaceFn<NPARAMS> currentVoiceSpace;
 
     std::array<String, nVoiceSpaces> getVoiceSpaceNames() {
         std::array<String, nVoiceSpaces> names;
-        for(size_t i=0; i < voiceSpaces.size(); i++) {
+        for (size_t i = 0; i < voiceSpaces.size(); i++)
             names[i] = voiceSpaces[i].name;
-        }
         return names;
     }
 
     void setVoiceSpace(size_t i) {
         if (i < voiceSpaces.size()) {
             currentVoiceSpace = voiceSpaces[i].mappingFunction;
+            currentVoiceSpaceIdx_ = i;
         }
     }
 
-    SaxFXAudioApp() : AudioAppBase<NPARAMS>() {
-        // auto voiceSpaceDefault = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_DEFAULT_BODY
-        // };
-        // voiceSpaces[0] = {"Default", voiceSpaceDefault};
-        // auto voiceSpaceResonant = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_RESONANT_BODY
-        // };
-        // voiceSpaces[1] = {"Resonant", voiceSpaceResonant};
-        // auto voiceSpaceSoft = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_SOFT_BODY
-        // };
-        // voiceSpaces[2] = {"Soft", voiceSpaceSoft};
-        // auto voiceSpaceCathedral = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_CATHEDRAL_BODY
-        // };
-        // voiceSpaces[3] = {"Cathedral", voiceSpaceCathedral};
-        // auto voiceSpaceShimmer = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_SHIMMER_BODY
-        // };
-        // voiceSpaces[4] = {"Shimmer", voiceSpaceShimmer};
-        // auto voiceSpaceChamber = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_CHAMBER_BODY
-        // };
-        // voiceSpaces[5] = {"Chamber", voiceSpaceChamber};
-        // auto voiceSpaceMetallic = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_METALLIC_BODY
-        // };
-        // voiceSpaces[6] = {"Metallic", voiceSpaceMetallic};
-        // auto voiceSpaceGranular = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_GRANULAR_BODY
-        // };
-        // voiceSpaces[7] = {"Granular", voiceSpaceGranular};
-        // auto voiceSpaceDiffuse = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_DIFFUSE_BODY
-        // };
-        // voiceSpaces[8] = {"Diffuse", voiceSpaceDiffuse};
-        // auto voiceSpaceDark = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_DARK_BODY
-        // };
-        // voiceSpaces[9] = {"Dark", voiceSpaceDark};
-        // auto voiceSpaceBright = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_BRIGHT_BODY
-        // };
-        // voiceSpaces[10] = {"Bright", voiceSpaceBright};
-        // auto voiceSpaceHarmonic = [this](const std::array<float, NPARAMS>& smoothParams) {
-        //     VOICE_SPACE_VERBFX_HARMONIC_BODY
-        // };
-        // voiceSpaces[11] = {"Harmonic", voiceSpaceHarmonic};
-        // currentVoiceSpace = voiceSpaces[0].mappingFunction;
-        queue_init(&controlMessageQueue, sizeof(controlMessages), 1);
-        queue_init(&wetdryQueue, sizeof(float), 1);
-    };
+    size_t getVoiceSpace() const { return currentVoiceSpaceIdx_; }
 
+    AudioDriver::codec_config_t GetDriverConfig() const override {
+        return {
+            .mic_input    = true,
+            .line_level   = 3,
+            .mic_gain_dB  = 0,
+            .output_volume = 0.97f
+        };
+    }
+
+    SaxFXAudioApp() : AudioAppBase<NPARAMS>() {
+        queue_init(&controlMessageQueue, sizeof(controlMessages), 8);
+
+        auto vsDefault = [this](const std::array<float, NPARAMS>& p) {
+            mixScale_ = 0.33333f;
+            grainDelay.setGrainLengthMs(10.f + p[0] * 490.f);
+            grainDelay.setStartTimeMs(  20.f + p[1] * 980.f);
+            grainDelay.setFeedback(          p[2]);
+            grainDelay.setPitch(             powf(2.f, p[3] * 2.f - 1.f));
+            grainDelay.setPitchSpread(       p[4]);
+            grainDelay.setFreeze(            p[7] > 0.99f);
+
+            grainDelay2.setGrainLengthMs(10.f + p[8]  * 190.f);
+            grainDelay2.setStartTimeMs(  10.f + p[9]  * 240.f);
+            grainDelay2.setFeedback(           p[10]);
+            grainDelay2.setPitch(              powf(2.f, p[11] * 2.f - 1.f));
+            grainDelay2.setPitchSpread(        p[12]);
+            grainDelay2.setFreeze(             p[15] > 0.99f);
+
+            grainDelay3.setGrainLengthMs(10.f + p[16] * 190.f);
+            grainDelay3.setStartTimeMs(  10.f + p[17] * 240.f);
+            grainDelay3.setFeedback(           p[18]);
+            grainDelay3.setPitch(              powf(2.f, p[19] * 2.f - 1.f));
+            grainDelay3.setPitchSpread(        p[20]);
+            grainDelay3.setFreeze(             p[23] > 0.99f);
+
+            reverb_.setSize(       p[24]);
+            reverb_.setDecay(      p[25]);
+            reverb_.setDamping(    p[26]);
+            reverb_.setDiffusion(  p[27]);
+            reverb_.setModDepth(   p[28]);
+            reverb_.setModRate(    p[29]);
+            reverb_.setPreDelay(   p[30]);
+            reverb_.setLowCut(     p[31]);
+            reverb_.setStereoWidth(p[32]);
+            reverb_.setSaturation( p[33]);
+            reverbMix_ = effectMix(p[34]);
+        };
+        voiceSpaces[0] = {"Default", vsDefault};
+
+        auto vsOctaveSnap = [this](const std::array<float, NPARAMS>& p) {
+            mixScale_ = 0.33333f;
+            auto snap = [](float v) -> float {
+                return (v < 0.333f) ? 0.5f : (v < 0.667f) ? 1.0f : 2.0f;
+            };
+
+            grainDelay.setGrainLengthMs(10.f + p[0] * 490.f);
+            grainDelay.setStartTimeMs(  20.f + p[1] * 980.f);
+            grainDelay.setFeedback(          p[2]);
+            grainDelay.setPitch(             snap(p[3]));
+            grainDelay.setPitchSpread(       p[4] * 0.03f);
+            grainDelay.setFreeze(            p[7] > 0.99f);
+
+            grainDelay2.setGrainLengthMs(10.f + p[8]  * 190.f);
+            grainDelay2.setStartTimeMs(  10.f + p[9]  * 240.f);
+            grainDelay2.setFeedback(           p[10]);
+            grainDelay2.setPitch(              snap(p[11]));
+            grainDelay2.setPitchSpread(        p[12] * 0.03f);
+            grainDelay2.setFreeze(             p[15] > 0.99f);
+
+            grainDelay3.setGrainLengthMs(10.f + p[16] * 190.f);
+            grainDelay3.setStartTimeMs(  10.f + p[17] * 240.f);
+            grainDelay3.setFeedback(           p[18]);
+            grainDelay3.setPitch(              snap(p[19]));
+            grainDelay3.setPitchSpread(        p[20] * 0.03f);
+            grainDelay3.setFreeze(             p[23] > 0.99f);
+
+            reverb_.setSize(       p[24]);
+            reverb_.setDecay(      p[25]);
+            reverb_.setDamping(    p[26]);
+            reverb_.setDiffusion(  p[27]);
+            reverb_.setModDepth(   p[28]);
+            reverb_.setModRate(    p[29]);
+            reverb_.setPreDelay(   p[30]);
+            reverb_.setLowCut(     p[31]);
+            reverb_.setStereoWidth(p[32]);
+            reverb_.setSaturation( p[33]);
+            reverbMix_ = effectMix(p[34]);
+        };
+        voiceSpaces[1] = {"OctaveSnap", vsOctaveSnap};
+
+        auto vsGrainVerb = [this](const std::array<float, NPARAMS>& p) {
+            mixScale_ = 1.f;
+            grainDelay.setGrainLengthMs(10.f + p[0] * 490.f);
+            grainDelay.setStartTimeMs(  20.f + p[1] * 980.f);
+            grainDelay.setFeedback(          p[2]);
+            grainDelay.setPitch(             powf(2.f, p[3] * 2.f - 1.f));
+            grainDelay.setPitchSpread(       p[4]);
+            grainDelay.setFreeze(            p[7] > 0.99f);
+
+            grainDelay2.setFeedback(0.f);
+            grainDelay3.setFeedback(0.f);
+
+            reverb_.setSize(       p[24]);
+            reverb_.setDecay(      p[25]);
+            reverb_.setDamping(    p[26]);
+            reverb_.setDiffusion(  p[27]);
+            reverb_.setModDepth(   p[28]);
+            reverb_.setModRate(    p[29]);
+            reverb_.setPreDelay(   p[30]);
+            reverb_.setLowCut(     p[31]);
+            reverb_.setStereoWidth(p[32]);
+            reverb_.setSaturation( p[33]);
+            reverbMix_ = effectMix(p[34]);
+        };
+        voiceSpaces[2] = {"GrainVerb", vsGrainVerb};
+
+        auto vsSqueaky = [this](const std::array<float, NPARAMS>& p) {
+            mixScale_ = 0.33333f;
+            grainDelay.setGrainLengthMs(10.f + p[0] * 490.f);
+            grainDelay.setStartTimeMs(  20.f + p[1] * 980.f);
+            grainDelay.setFeedback(          p[2]);
+            grainDelay.setPitch(             powf(2.f, p[3] * 4.f));
+            grainDelay.setPitchSpread(       p[4] * 0.3f);
+            grainDelay.setFreeze(            p[7] > 0.9f);
+
+            grainDelay2.setGrainLengthMs(10.f + p[8]  * 190.f);
+            grainDelay2.setStartTimeMs(  10.f + p[9]  * 240.f);
+            grainDelay2.setFeedback(           p[10]);
+            grainDelay2.setPitch(              powf(2.f, p[11] * 4.f));
+            grainDelay2.setPitchSpread(        p[12] * 0.3f);
+            grainDelay2.setFreeze(             p[15] > 0.99f);
+
+            grainDelay3.setGrainLengthMs(10.f + p[16] * 190.f);
+            grainDelay3.setStartTimeMs(  10.f + p[17] * 240.f);
+            grainDelay3.setFeedback(           p[18]);
+            grainDelay3.setPitch(              powf(2.f, p[19] * 4.f));
+            grainDelay3.setPitchSpread(        p[20] * 0.3f);
+            grainDelay3.setFreeze(             p[23] > 0.99f);
+
+            reverb_.setSize(       p[24]);
+            reverb_.setDecay(      p[25]);
+            reverb_.setDamping(    p[26]);
+            reverb_.setDiffusion(  p[27]);
+            reverb_.setModDepth(   p[28]);
+            reverb_.setModRate(    p[29]);
+            reverb_.setPreDelay(   p[30]);
+            reverb_.setLowCut(     p[31]);
+            reverb_.setStereoWidth(p[32]);
+            reverb_.setSaturation( p[33]);
+            reverbMix_ = effectMix(p[34]);
+        };
+        voiceSpaces[3] = {"Squeaky", vsSqueaky};
+
+        currentVoiceSpace = voiceSpaces[0].mappingFunction;
+    }
 
     __attribute__((hot)) stereosample_t __force_inline Process(const stereosample_t x) override
     {
-        static float verbFB = 0.f;
-        static float delaysFB = 0.f;
-        static int count=0;
-        static bool freeze=false;
-
         float mix = x.L;
-
-        // mix = notch.play(mix);
-
-
-        // smoother.Process(neuralNetOutputs.data(), smoothParams.data());
-
-        // //mapping
-        // currentVoiceSpace(smoothParams);
-
-        // //XFADE
-
-        // const float filterBankDelayFBLevel = sqrtf(filterBankDelayXFade);
-        // const float filterBankDelayFBLevelInv = sqrtf(1.f - filterBankDelayXFade);
-
-        // /////////////////// FILTERBANK
-
-        // float filterBankIn = mix + (filterBankDelayFBLevel * ddelayFeedback); 
-        // float filterBankOut=mix;
-
-        // if (false) {
-        //     filterBankOut = filterBank0.bandpassChamberlain(filterBankIn,  filterBankF0, filterBankRes0);
-        //     filterBankOut += filterBank1.bandpassChamberlain(filterBankIn, filterBankF1, filterBankRes1);
-        //     filterBankOut += filterBank2.bandpassChamberlain(filterBankIn, filterBankF2, filterBankRes2);
-        //     filterBankOut += filterBank3.bandpassChamberlain(filterBankIn, filterBankF3, filterBankRes3);
-        //     filterBankOut += filterBank4.bandpassChamberlain(filterBankIn, filterBankF4, filterBankRes4);
-        //     filterBankOut += filterBank5.bandpassChamberlain(filterBankIn, filterBankF5, filterBankRes5);
-        //     filterBankOut += filterBank6.bandpassChamberlain(filterBankIn, filterBankF6, filterBankRes6);
-        //     filterBankOut += filterBank7.bandpassChamberlain(filterBankIn, filterBankF7, filterBankRes7);
-
-        //     filterBankOut *= 0.125f;
-        // }
-
-        // ////////////// DELAYS
-        // float delayIn = filterBankOut;
-
-        // float delayed = enableLongDelay ? ddelay.read(ddelayTime) : 0.f;
-        // ddelay.write((delayIn * filterBankDelayFBLevelInv) + ((ddelayFeedback + (delayIn * filterBankDelayFBLevel)) * delayed));
-
-        // float delayed1 = enableMediumDelay ? ddelay1.read(ddelayTime1) : 0.f;
-        // ddelay1.write(delayIn + (ddelayFeedback1 * delayed1));
-
-        // float delayed2 = enableShortDelay ? ddelay2.read(ddelayTime2) : 0.f;
-        // ddelay2.write(delayIn + (ddelayFeedback2 * delayed2));
-
-        // float a = fminf(delayMorph * 2.f, 1.f);
-        // float b = fmaxf(delayMorph * 2.f - 1.f, 0.f);
-        // constexpr float kEqualMix = 0.57735f; // 1/sqrt(3), constant-power equal mix
-        // float w_short  = kEqualMix + delayBlend * (sqrtf(1.f - a)                    - kEqualMix);
-        // float w_medium = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(1.f - b)         - kEqualMix);
-        // float w_long   = kEqualMix + delayBlend * (sqrtf(a) * sqrtf(b)               - kEqualMix);
-        // float delaySum = (w_short * delayed2) + (w_medium * delayed1) + (w_long * delayed);
-
-        // //////////////// VERB
-        // float verbIn = enableReverb ? filterBankOut : 0.f;
-        // if (enableDelayToReverb && enableReverb) {
-        //     verbIn += (delayToVerbLevel * delaySum);
-        // }
-        // float verbOut=0.f;
-
-
-        // verbOut = lpcomb0.lpcombfb(filterBankOut, SIZE_comb0, lp0fb, lp0cutoff);
-        // verbOut += lpcomb1.lpcombfb(filterBankOut, SIZE_comb1, lp1fb, lp1cutoff);
-        // verbOut += lpcomb2.lpcombfb(filterBankOut, SIZE_comb2, lp2fb, lp2cutoff);
-        // verbOut += lpcomb3.lpcombfb(filterBankOut, SIZE_comb3, lp3fb, lp3cutoff);
-        // verbOut += lpcomb4.lpcombfb(filterBankOut, SIZE_comb4, lp4fb, lp4cutoff);
-        // verbOut += lpcomb5.lpcombfb(filterBankOut, SIZE_comb5, lp5fb, lp5cutoff);
-        // verbOut += lpcomb6.lpcombfb(filterBankOut, SIZE_comb6, lp6fb, lp6cutoff);
-        // verbOut += lpcomb7.lpcombfb(filterBankOut, SIZE_comb7, lp7fb, lp7cutoff);
-
-
-
-
-        // verbOut = allp0.allpass(verbOut, SIZE_allp0, allp0fb);
-        // verbOut = allp1.allpass(verbOut, SIZE_allp1, allp1fb);
-        // verbOut = allp2.allpass(verbOut, SIZE_allp2, allp2fb);
-        // verbOut = allp3.allpass(verbOut, SIZE_allp3, allp3fb);
-
-        // float y= (sqrtf(verbVsDelayLevel) * delaySum) + (sqrtf(1.f - verbVsDelayLevel) * verbOut);
-
-        // //feedback 
-        // delaysFB = delaySum;
-        // verbFB = verbOut;
-
-
-
-
-        // // Mix dry
-        // y = (y * sqrtf(wetdry_mix_)) + (mix * sqrtf(1.f - wetdry_mix_));
-
-
-        // stereosample_t ret { y, y };
         mix = hp.play(mix);
         mix = lp.play(mix);
         mix = notch.play(mix);
 
-        // if (count % 48000 == 0)  {
-        //     freeze = !freeze;
-        //     grainDelay.setFreeze(freeze);
-        // }       
-        const float grainOut = grainDelay.process(mix);
-        const float grainOut2 = grainDelay2.process(mix);
-        const float grainOut3 = grainDelay3.process(mix);
-        const float grainMix = (grainOut + grainOut2 + grainOut3) * 0.33333f;
-        const float out = grainMix;
+        const float grainOut  = enableGrain1 ? grainDelay.process(mix)  : 0.f;
+        const float grainOut2 = enableGrain2 ? grainDelay2.process(mix) : 0.f;
+        const float grainOut3 = enableGrain3 ? grainDelay3.process(mix) : 0.f;
+        const float out = (grainOut + grainOut2 + grainOut3) * mixScale_;
 
-        count++;
-        return { out, out };
+        float outL = out;
+        float outR = out;
+
+        if (enableReverb && reverbMix_ > 0.f) {
+            auto [revL, revR] = reverb_.process(outL);
+            const float wet = sqrtf(reverbMix_);
+            const float dry = sqrtf(1.f - reverbMix_);
+            outL = outL * dry + revL * wet;
+            outR = outR * dry + revR * wet;
+        }
+
+        outL *= 2.f;
+        outR *= 2.f;
+        return { bassCut2.play(bassCut.play(outL)), bassCut2R.play(bassCutR.play(outR)) };
     }
 
     void Setup(float sample_rate, std::shared_ptr<InterfaceBase> interface) override
@@ -269,125 +240,54 @@ public:
         maxiSettings::sampleRate = sample_rate;
 
         notch.set(maxiBiquad::filterTypes::HIGHSHELF, 9000.f, 0.707f, -12.f);
-        hp.set(maxiBiquad::filterTypes::HIGHPASS, 50.f, 0.707f, 0.f);
-        lp.set(maxiBiquad::filterTypes::LOWPASS, 9000.f, 0.707f, 0.f);
+        hp.set(maxiBiquad::filterTypes::HIGHPASS,       50.f, 0.707f,  0.f);
+        lp.set(maxiBiquad::filterTypes::LOWPASS,      9000.f, 0.707f,  0.f);
+        bassCut.set(  maxiBiquad::filterTypes::HIGHPASS, 200.f, 0.541f, 0.f);
+        bassCutR.set( maxiBiquad::filterTypes::HIGHPASS, 200.f, 0.541f, 0.f);
+        bassCut2.set( maxiBiquad::filterTypes::HIGHPASS, 200.f, 1.307f, 0.f);
+        bassCut2R.set(maxiBiquad::filterTypes::HIGHPASS, 200.f, 1.307f, 0.f);
 
         grainDelay.setup(sample_rate);
         grainDelay2.setup(sample_rate);
         grainDelay3.setup(sample_rate);
+        reverb_.setup(sample_rate);
+    }
+
+    static float effectMix(float raw) {
+        return (raw > 0.3f) ? (raw - 0.3f) * (1.f / 0.7f) : 0.f;
     }
 
     __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
     {
-        // params 0-7: grainDelay  (large buffer, ~1365ms at 48kHz)
-        grainDelay.setGrainLengthMs(10.f + params[0] * 490.f);
-        grainDelay.setStartTimeMs(  20.f + params[1] * 980.f);
-        grainDelay.setFeedback(          params[2]);
-        grainDelay.setPitch(             powf(2.f, params[3] * 2.f - 1.f));
-        grainDelay.setPitchSpread(       params[4]);
-        grainDelay.setTapLevel(          params[5] * 0);
-        grainDelay.setTapFeedback(       params[6]*0);
-        grainDelay.setFreeze(            params[7] > 0.9f);
-
-        // params 8-15: grainDelay2  (small buffer, ~341ms at 48kHz)
-        grainDelay2.setGrainLengthMs(10.f + params[8]  * 190.f);
-        grainDelay2.setStartTimeMs(  10.f + params[9]  * 240.f);
-        grainDelay2.setFeedback(           params[10]);
-        grainDelay2.setPitch(              powf(2.f, params[11] * 2.f - 1.f));
-        grainDelay2.setPitchSpread(        params[12]);
-        grainDelay2.setTapLevel(           params[13] * 0);
-        grainDelay2.setTapFeedback(        params[14]*0);
-        grainDelay2.setFreeze(             params[15] > 0.9f);
-
-        // params 16-23: grainDelay3  (small buffer, ~341ms at 48kHz)
-        grainDelay3.setGrainLengthMs(10.f + params[16] * 190.f);
-        grainDelay3.setStartTimeMs(  10.f + params[17] * 240.f);
-        grainDelay3.setFeedback(           params[18]);
-        grainDelay3.setPitch(              powf(2.f, params[19] * 2.f - 1.f));
-        grainDelay3.setPitchSpread(        params[20]);
-        grainDelay3.setTapLevel(           params[21]*0);
-        grainDelay3.setTapFeedback(        params[22]*0);
-        grainDelay3.setFreeze(             params[23] > 0.8f);
-
-        // params 24-46: available for future use
+        currentVoiceSpace(params);
 
         controlMessages msg;
         while (queue_try_remove(&controlMessageQueue, &msg)) {
-            switch(msg) {
-                case controlMessages::MSG_ENABLE_FILTERBANK:
-                    enableFilterbank = !enableFilterbank;
-                    break;
-                case controlMessages::MSG_ENABLE_REVERB:
-                    enableReverb = !enableReverb;
-                    break;
-                case controlMessages::MSG_ENABLE_SHORT_DELAY:
-                    enableShortDelay = !enableShortDelay;
-                    break;
-                case controlMessages::MSG_ENABLE_MEDIUM_DELAY:
-                    enableMediumDelay = !enableMediumDelay;
-                    break;
-                case controlMessages::MSG_ENABLE_LONG_DELAY:
-                    enableLongDelay = !enableLongDelay;
-                    break;
-                case controlMessages::MSG_ENABLE_DELAY_TO_REVERB:
-                    enableDelayToReverb = !enableDelayToReverb;
-                    break;
+            switch (msg) {
+                case controlMessages::MSG_ENABLE_REVERB: enableReverb = !enableReverb; break;
+                case controlMessages::MSG_ENABLE_GRAIN1: enableGrain1 = !enableGrain1; break;
+                case controlMessages::MSG_ENABLE_GRAIN2: enableGrain2 = !enableGrain2; break;
+                case controlMessages::MSG_ENABLE_GRAIN3: enableGrain3 = !enableGrain3; break;
             }
         }
-        {
-            float v;
-            if (queue_try_remove(&wetdryQueue, &v)) wetdryKnobValue = v;
-        }
-        if (wetdryKnobValue >= 0.f) {
-            wetdry_mix_ = wetdryKnobValue;
-        }
     }
-    
 
 protected:
-
-    std::array<float,NPARAMS> neuralNetOutputs{0}, smoothParams{0};
-
-    // https://ccrma.stanford.edu/~jos/pasp/Freeverb.html
-    
     maxiBiquad notch;
     maxiBiquad hp;
     maxiBiquad lp;
+    maxiBiquad bassCut;
+    maxiBiquad bassCutR;
+    maxiBiquad bassCut2;
+    maxiBiquad bassCut2R;
 
     GrainDelayI16<16384*4> grainDelay;
     GrainDelayI16<16384*1> grainDelay2;
     GrainDelayI16<16384*1> grainDelay3;
-
-    maxiDCBlocker dcb;
-
-    float wetdry_mix_{0.5f};
-    float wetdryKnobValue{0.5f};
-
-    // mapping
-    float lp0fb{0}, lp0cutoff{0};
-    float lp1fb{0}, lp1cutoff{0};
-    float lp2fb{0}, lp2cutoff{0};
-    float lp3fb{0}, lp3cutoff{0};
-    float lp4fb{0}, lp4cutoff{0};
-    float lp5fb{0}, lp5cutoff{0};
-    float lp6fb{0}, lp6cutoff{0};
-    float lp7fb{0}, lp7cutoff{0};
-    float allp0fb{0}, allp1fb{0}, allp2fb{0}, allp3fb{0};
-    float filterBankF0{0}, filterBankF1{0}, filterBankF2{0}, filterBankF3{0};
-    float filterBankF4{0}, filterBankF5{0}, filterBankF6{0}, filterBankF7{0};
-    float filterBankRes0{0}, filterBankRes1{0}, filterBankRes2{0}, filterBankRes3{0};
-    float filterBankRes4{0}, filterBankRes5{0}, filterBankRes6{0}, filterBankRes7{0};
-    float ddelayTime{0}, ddelayFeedback{0};
-    float ddelayTime1{0}, ddelayFeedback1{0};
-    float ddelayTime2{0}, ddelayFeedback2{0};
-    float verbVsDelayLevel{0}, delayToVerbLevel{0}, filterBankDelayXFade{0};
-    float delayMorph{0.5f}, delayBlend{0.f};
-
-    OnePoleSmoother<kN_Params> smoother{150.f, (float)kSampleRate};
-    
-    // maxiDynamicsLite limiter;
-
-
+    ReverbI16<4096> reverb_;
+    float reverbMix_  = 0.f;
+    float mixScale_   = 0.33333f;
+    size_t currentVoiceSpaceIdx_ = 0;
 };
 
-#endif  
+#endif

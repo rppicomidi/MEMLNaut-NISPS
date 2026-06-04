@@ -5,8 +5,10 @@
 #include "../../src/memllib/synth/maximilian.h"
 #include "../../src/memllib/synth/GrainDelayI16.hpp"
 #include "../../src/memllib/synth/ModFXI16.hpp"
+#include "../../src/memllib/synth/ReverbI16.hpp"
 
-template<size_t NPARAMS=46>
+// 46 original FX params + 11 reverb params (46-56) = 57.
+template<size_t NPARAMS=57>
 class DJFXAudioApp : public AudioAppBase<NPARAMS>
 {
 public:
@@ -23,8 +25,10 @@ public:
     static constexpr uint32_t kFX_Downsample = 1u << 6;
     static constexpr uint32_t kFX_Stutter    = 1u << 7;
     static constexpr uint32_t kFX_RingMod    = 1u << 8;
+    static constexpr uint32_t kFX_Reverb     = 1u << 9;
+    static constexpr uint32_t kFX_All        = (1u << 10) - 1;  // all 10 FX enabled
 
-    volatile uint32_t enableMask_{kFX_Grain1};
+    volatile uint32_t enableMask_{kFX_All};
 
     queue_t wetdryQueue;
     queue_t bpmQueue;
@@ -115,10 +119,20 @@ public:
         // Makeup gain
         mix = tanhf(mix * 4.0f);
 
-        // Wet/dry crossfade — mono wet added to stereo dry
+        // Reverb — on the wet FX bus, produces a stereo pair
+        float wetL = mix, wetR = mix;
+        if ((en & kFX_Reverb) && reverbMix_ > 0.f) {
+            auto [revL, revR] = reverb_.process(mix);
+            const float rWet = sqrtf(reverbMix_);
+            const float rDry = sqrtf(1.f - reverbMix_);
+            wetL = mix * rDry + revL * rWet;
+            wetR = mix * rDry + revR * rWet;
+        }
+
+        // Wet/dry crossfade — stereo wet added to stereo dry
         const float dryAmt = sqrtf(1.f - wetdry_mix_);
         const float wetAmt = sqrtf(wetdry_mix_);
-        return { mix * wetAmt + x.L * dryAmt, mix * wetAmt + x.R * dryAmt };
+        return { wetL * wetAmt + x.L * dryAmt, wetR * wetAmt + x.R * dryAmt };
     }
 
     void Setup(float sample_rate, std::shared_ptr<InterfaceBase> interface) override
@@ -135,6 +149,7 @@ public:
 
         grainDelay.setup(sample_rate);
         grainDelay2.setup(sample_rate);
+        reverb_.setup(sample_rate);
         sampleRate_ = sample_rate;
     }
 
@@ -263,6 +278,19 @@ public:
             delayBPMix_      = effectMix(params[45]);
             delayBP_.set(maxiBiquad::filterTypes::BANDPASS, freq, q, 0.f);
         }
+
+        // params 46-56: reverb (copied from SaxFX)
+        reverb_.setSize(       params[46]);
+        reverb_.setDecay(      params[47]);
+        reverb_.setDamping(    params[48]);
+        reverb_.setDiffusion(  params[49]);
+        reverb_.setModDepth(   params[50]);
+        reverb_.setModRate(    params[51]);
+        reverb_.setPreDelay(   params[52]);
+        reverb_.setLowCut(     params[53]);
+        reverb_.setStereoWidth(params[54]);
+        reverb_.setSaturation( params[55]);
+        reverbMix_ = effectMix(params[56]);
     }
 
 protected:
@@ -284,6 +312,8 @@ protected:
     RingMod           ringMod_;
     StutterGate       stutterGate_;
     maxiOsc           apLFO_;
+    ReverbI16<4096>   reverb_;
+    float             reverbMix_{0.f};
 
     float wetdry_mix_{0.5f};
     float grainCrossfade_{0.5f};

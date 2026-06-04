@@ -37,9 +37,12 @@
 // #define MODE_MEMLCELIUM
 // #define MODE_D50
 // #define MODE_TRXS
-#define MODE_DJFX
+// #define MODE_ROBOOP
+#define MODE_DJFX 
 // #define MODE_MOPHO
 // #define MODE_MICROQ
+// #define MODE_ERICA_FBANK
+// #define MODE_STEAMPIPE
 
 #include "modes/MEMLNautMode.hpp"
 #ifdef MODE_PAFSYNTH
@@ -98,6 +101,10 @@
   #include "modes/MEMLNautModeTRxS.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeTRxS
 #endif
+#ifdef MODE_ROBOOP
+  #include "modes/MEMLNautModeRoboOp.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeRoboOp
+#endif
 #ifdef MODE_DJFX
   #include "modes/MEMLNautModeDJFX.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeDJFX
@@ -109,6 +116,14 @@
 #ifdef MODE_MOPHO
   #include "modes/MEMLNautModeMopho.hpp"
   #define MEMLNAUT_MODE_TYPE MEMLNautModeMopho
+#endif
+#ifdef MODE_ERICA_FBANK
+  #include "modes/MEMLNautModeEricaFBank.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeEricaFBank
+#endif
+#ifdef MODE_STEAMPIPE
+  #include "modes/MEMLNautModeSteampipe.hpp"
+  #define MEMLNAUT_MODE_TYPE MEMLNautModeSteampipe
 #endif
 
 MEMLNAUT_MODE_TYPE AUDIO_MEM MEMLNautModeHub;
