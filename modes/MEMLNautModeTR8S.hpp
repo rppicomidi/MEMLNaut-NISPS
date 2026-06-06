@@ -13,6 +13,8 @@
 #include <memory>
 #include <array>
 #include <cstdio>
+#include <algorithm>
+#include <span>
 
 // TR-8S MIDI CC targets — full set from the Roland TR-8S MIDI Implementation
 // (Version 1.02, Feb 2018). 11 instruments (BD/SD/LT/MT/HT/RS/HC/CH/OH/CC/RC),
@@ -47,10 +49,17 @@ static const std::vector<CCOption> kTR8SCCOptions = {
     { 14, "Fill In On"     }, { 70, "Fill In Trig"   },
 };
 
-// Default 16 assignments: one Ctrl knob per instrument (11) + 5 global FX.
+// Default 32 assignments: Ctrl + Tune for every instrument (22), Decay for the
+// six core voices (6), and four global FX (4).
 static const std::vector<uint8_t> kTR8SDefaultCCs = {
-    96, 97, 102, 103, 104, 105, 106, 107, 108, 109, 110,  // BD..RC Ctrl
-    91, 16, 17, 18, 19                                     // Reverb, Delay L/T/FB, Master FX Ctrl
+    // Ctrl, all 11 instruments
+    96, 97, 102, 103, 104, 105, 106, 107, 108, 109, 110,
+    // Tune, all 11 instruments
+    20, 25, 46, 49, 52, 55, 58, 61, 80, 83, 86,
+    // Decay for BD/SD/LT/HC/CH/OH
+    23, 28, 47, 59, 62, 81,
+    // Reverb + Delay Level/Time/Feedback
+    91, 16, 17, 18
 };
 
 // Focus groups — one per TR-8S instrument plus a combined FX group.
@@ -73,17 +82,31 @@ public:
     constexpr static size_t kN_InputParams    = InterfaceRL::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
-    inline static TRxSAudioApp<> audioApp;
-    std::array<String, TRxSAudioApp<>::nVoiceSpaces> voiceSpaceList;
+    inline static TRxSAudioApp<32> audioApp;
+    std::array<String, TRxSAudioApp<32>::nVoiceSpaces> voiceSpaceList;
 
     InterfaceRL interface;
     std::shared_ptr<InterfaceRL> interfacePtr;
 
-    FocusManager<TRxSAudioApp<>::kN_Params, kTR8SNumGroups> focusManager;
+    FocusManager<TRxSAudioApp<32>::kN_Params, kTR8SNumGroups> focusManager;
     uint32_t presentGroupsMask_ = 0;
 
+    // Per-CC "home" base values [0..1], indexed by NN output slot (== sorted CC order).
+    std::array<float, TRxSAudioApp<32>::kN_Params> homeValues_{};
+    // Live output values [0..1] actually sent as MIDI (home + fade modulation). Read by
+    // the CC Assign view's "out" column. Written in the output hook (core 0), read in
+    // loopCore0 (core 0) — same core, no lock needed.
+    std::array<float, TRxSAudioApp<32>::kN_Params> liveValues_{};
+    std::shared_ptr<CCSelectView> ccView_;
+    // rvx (RV_X1) knob: fades NN modulation in/out around home. Written from the knob
+    // callback, read in the param transform hook (same cross-core pattern as focusManager).
+    volatile float fadeAmount_ = 0.f;
+
     void setupInterface() {
-        interface.setup(kN_InputParams, TRxSAudioApp<>::kN_Params);
+        interface.setup(kN_InputParams, TRxSAudioApp<32>::kN_Params);
+        // Repurpose rvx (RV_X1) from reward scale to the modulation fade amount.
+        // Must be set before bindInterface(), which reads the override.
+        interface.setRVX1Override([this](float v) { fadeAmount_ = v; interface.markInputDirty(); });
         interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("tr8s", "TR-8S");
         interfacePtr = make_non_owning(interface);
@@ -93,9 +116,31 @@ public:
         for (size_t i = 0; i < kTR8SNumGroups; i++)
             focusManager.setGroupName(i, names[i]);
 
+        // Focus latching applies to the NN outputs themselves (as before), so the NN
+        // outputs screen and training see the raw, focus-filtered network values.
         interface.paramTransformHook = [this](std::vector<float>& p) {
             focusManager.applyInPlace(p);
         };
+
+        // Home + fade is applied ONLY on the way out to MIDI — it does not touch the NN
+        // outputs graph or the training action. Linear interpolation home -> NN output:
+        // out = home + fade*(nn - home).  fade (rvx) = 0 -> home, fade = 1 -> NN output.
+        interface.paramOutputHook = [this](std::span<const float> nn) {
+            const float fade = fadeAmount_;
+            const size_t n = nn.size();
+            for (size_t i = 0; i < n && i < liveValues_.size(); i++) {
+                float v = homeValues_[i] + fade * (nn[i] - homeValues_[i]);
+                liveValues_[i] = v < 0.f ? 0.f : (v > 1.f ? 1.f : v);
+            }
+            if (midi_interf) midi_interf->SendParamsAsMIDICC(std::span<const float>(liveValues_.data(), n));
+        };
+    }
+
+    // Copy the CC-page home values into the slot-indexed array read by the hook.
+    void syncHomeArray(const std::vector<float>& homes) {
+        homeValues_.fill(0.f);
+        for (size_t i = 0; i < homes.size() && i < homeValues_.size(); i++)
+            homeValues_[i] = homes[i];
     }
 
     String getHelpTitle() { return "TR-8S Mode"; }
@@ -115,7 +160,7 @@ public:
 
     void setupMIDI(std::shared_ptr<MIDIInOut> new_midi_interf) {
         midi_interf = new_midi_interf;
-        midi_interf->Setup(TRxSAudioApp<>::kN_Params);
+        midi_interf->Setup(TRxSAudioApp<32>::kN_Params);
         midi_interf->SetMIDISendChannel(10);  // TR-8S default channel
         midi_interf->SetParamCCNumbers(kTR8SDefaultCCs);
         interface.bindMIDI(midi_interf);
@@ -124,7 +169,7 @@ public:
     void addViews() {
         auto updateActiveDims = [this]() {
             uint32_t mask = focusManager.getSelectedMask();
-            constexpr size_t N = TRxSAudioApp<>::kN_Params;
+            constexpr size_t N = TRxSAudioApp<32>::kN_Params;
             std::vector<bool> active(N);
             for (size_t i = 0; i < N; i++)
                 active[i] = (mask == 0) || ((focusManager.paramGroupMask[i] & mask) != 0);
@@ -149,19 +194,46 @@ public:
         });
         MEMLNaut::Instance()->disp->InsertViewAfter(interface.nnOutputsGraphView, focusView);
 
-        auto ccView = std::make_shared<CCSelectView>(TRxSAudioApp<>::kN_Params, "CC Assign");
+        auto ccView = std::make_shared<CCSelectView>(TRxSAudioApp<32>::kN_Params, "CC Assign");
         ccView->setOptions(kTR8SCCOptions);
+        ccView->setShowHome(true);
+        ccView->setLiveValues(liveValues_.data());  // "out" column reads live MIDI values
+        ccView_ = ccView;                            // for live refresh from loopCore0
 
-        auto saved = loadCCAssignments();
-        ccView->setSelectedCCs(saved);
-        midi_interf->SetParamCCNumbers(saved);
-        recomputeFocusGroups(saved, focusView, updateActiveDims);
+        std::vector<uint8_t> savedCCs;
+        std::vector<float>   savedHomes;
+        loadCCAssignments(savedCCs, savedHomes);
+        ccView->setSelectedCCs(savedCCs);
+        ccView->setHomeValues(savedHomes);
+        midi_interf->SetParamCCNumbers(savedCCs);
+        syncHomeArray(ccView->getHomeValues());
+        recomputeFocusGroups(savedCCs, focusView, updateActiveDims);
 
-        ccView->setOnChangeCallback([this, focusView, updateActiveDims](const std::vector<uint8_t>& ccs) {
+        // CC selection changed: remap MIDI, resync homes + focus groups (live, no flash).
+        ccView->setOnChangeCallback([this, ccView, focusView, updateActiveDims](const std::vector<uint8_t>& ccs) {
             midi_interf->SetParamCCNumbers(ccs);
-            saveCCAssignments(ccs);
+            syncHomeArray(ccView->getHomeValues());
             recomputeFocusGroups(ccs, focusView, updateActiveDims);
         });
+
+        // Home value edited (via the gain knob): resync + push to output (live, no flash).
+        ccView->setOnHomeChangeCallback([this, ccView]() {
+            syncHomeArray(ccView->getHomeValues());
+            interface.markInputDirty();
+        });
+
+        // Persist to flash only when leaving the page / exiting edit — flash writes block
+        // and would disrupt audio/MIDI processing if done on every knob tick.
+        ccView->setOnSaveCallback([this, ccView]() {
+            saveCCAssignments(ccView->getSelectedCCs(), ccView->getHomeValues());
+        });
+
+        // Gain knob sets the home of the cursored CC, but only while the CC page is
+        // focused for editing. (This mode produces no audio, so the gain knob is free.)
+        MEMLNaut::Instance()->setRVGain1Callback([ccView](float v) {
+            if (ccView->isFocused()) ccView->setHomeForCursor(v);
+        }, 0);
+
         MEMLNaut::Instance()->disp->AddView(ccView);
         interface.addInputSourceView(false);
     }
@@ -169,7 +241,9 @@ public:
     inline void processAnalysisParams() {}
     void analyse(stereosample_t) {}
     AudioDriver::codec_config_t getCodecConfig() { return audioApp.GetDriverConfig(); }
-    void loopCore0() {}
+    void loopCore0() {
+        if (ccView_) ccView_->refreshLiveColumn();  // live "out" column update (throttled)
+    }
 
 private:
     static constexpr const char* kCCFile = "/tr8s_cc.bin";
@@ -196,7 +270,7 @@ private:
     void recomputeFocusGroups(const std::vector<uint8_t>& ccs,
                               std::shared_ptr<BlockSelectView> focusView,
                               std::function<void()> updateActiveDims) {
-        std::array<uint32_t, TRxSAudioApp<>::kN_Params> masks{};
+        std::array<uint32_t, TRxSAudioApp<32>::kN_Params> masks{};
         for (size_t i = 0; i < ccs.size() && i < masks.size(); i++)
             masks[i] = ccToGroupMask(ccs[i]);
         focusManager.setParamGroups(masks);
@@ -216,27 +290,57 @@ private:
         updateActiveDims();
     }
 
-    std::vector<uint8_t> loadCCAssignments() {
+    // Flash file format: [0xA5 magic][uint8 N][N CC bytes][N home bytes (0..127)].
+    // 0xA5 (>127) can't be a legacy first-CC byte, so old raw-CC files are detected
+    // and loaded with default (0) homes.
+    static constexpr uint8_t kCCFileMagic = 0xA5;
+
+    void loadCCAssignments(std::vector<uint8_t>& ccs, std::vector<float>& homes) {
+        ccs.clear();
+        homes.clear();
         FILE* f = fopen(kCCFile, "rb");
         if (f) {
-            std::vector<uint8_t> ccs;
+            std::vector<uint8_t> raw;
             uint8_t b;
-            while (fread(&b, 1, 1, f) == 1) ccs.push_back(b);
+            while (fread(&b, 1, 1, f) == 1) raw.push_back(b);
             fclose(f);
-            Serial.printf("TR8S: loaded %u CC assignments from flash\n", (unsigned)ccs.size());
-            if (!ccs.empty()) return ccs;
+
+            if (raw.size() >= 2 && raw[0] == kCCFileMagic) {
+                size_t n = raw[1];
+                if (raw.size() >= 2 + 2 * n) {
+                    for (size_t i = 0; i < n; i++) ccs.push_back(raw[2 + i]);
+                    for (size_t i = 0; i < n; i++) homes.push_back(raw[2 + n + i] / 127.f);
+                    Serial.printf("TR8S: loaded %u CC assignments (with homes) from flash\n", (unsigned)n);
+                    return;
+                }
+            } else if (!raw.empty()) {
+                // Legacy: raw CC bytes, default homes.
+                ccs = raw;
+                homes.assign(ccs.size(), 0.f);
+                Serial.printf("TR8S: loaded %u legacy CC assignments from flash\n", (unsigned)ccs.size());
+                return;
+            }
         } else {
             Serial.println("TR8S: no saved CC assignments, using defaults");
         }
-        return std::vector<uint8_t>(kTR8SDefaultCCs.begin(), kTR8SDefaultCCs.end());
+        ccs.assign(kTR8SDefaultCCs.begin(), kTR8SDefaultCCs.end());
+        homes.assign(ccs.size(), 0.f);
     }
 
-    void saveCCAssignments(const std::vector<uint8_t>& ccs) {
+    void saveCCAssignments(const std::vector<uint8_t>& ccs, const std::vector<float>& homes) {
         FILE* f = fopen(kCCFile, "wb");
         if (f) {
-            fwrite(ccs.data(), 1, ccs.size(), f);
+            uint8_t n = (uint8_t)std::min<size_t>(ccs.size(), 255);
+            fputc(kCCFileMagic, f);
+            fputc(n, f);
+            fwrite(ccs.data(), 1, n, f);
+            for (size_t i = 0; i < n; i++) {
+                float h = (i < homes.size()) ? homes[i] : 0.f;
+                uint8_t hb = (uint8_t)(h * 127.f + 0.5f);
+                fputc(hb, f);
+            }
             fclose(f);
-            Serial.printf("TR8S: saved %u CC assignments to flash\n", (unsigned)ccs.size());
+            Serial.printf("TR8S: saved %u CC assignments (with homes) to flash\n", (unsigned)n);
         } else {
             Serial.println("TR8S: failed to open flash for writing");
         }
