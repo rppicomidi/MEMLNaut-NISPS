@@ -16,14 +16,15 @@
 
 class MEMLNautModeSaxFX {
 public:
-    constexpr static size_t kN_InputParams     = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams     = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     // Focus groups: Reverb, Grain timing, Feedback, Pitch, Pitch spread.
     static constexpr size_t kSaxFX_NGroups = 5;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<SaxFXAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
     MachineListeningMixin mlMixin;
 
     inline static SaxFXAudioApp<> audioAppSaxFX;
@@ -37,7 +38,7 @@ public:
     void setupInterface() {
         interface.setup(kN_InputParams, SaxFXAudioApp<>::kN_Params);
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);
-        interface.setInputSource(InterfaceRL::INPUT_SOURCE::MACHINE_LISTENING);
+        interface.setInputSource(InterfaceRLBase::INPUT_SOURCE::MACHINE_LISTENING);
         interface.setModeInfo("saxfx", "SaxFX");
 
         interface.setExtraSaveCallback([this]() -> std::vector<uint8_t> {

@@ -7,10 +7,10 @@
 class MachineListeningMixin {
     XiasriAnalysis mlAnalysis_{48000.f};
     SharedBuffer<float, XiasriAnalysis::kN_Params> machine_list_buffer_;
-    InterfaceRL* iface_ = nullptr;
+    InterfaceRLBase* iface_ = nullptr;
 public:
     // Call from setupAudio() after audio app Setup() (maxiSettings must be ready)
-    void setup(InterfaceRL& iface) {
+    void setup(InterfaceRLBase& iface) {
         iface_ = &iface;
         iface.setHasMachineListening(true);
         mlAnalysis_.ReinitFilters();
@@ -18,8 +18,8 @@ public:
     __force_inline void analyse(stereosample_t x) {
         if (!iface_) return;
         auto src = iface_->getInputSource();
-        if (src != InterfaceRL::INPUT_SOURCE::MACHINE_LISTENING &&
-            src != InterfaceRL::INPUT_SOURCE::COMBINED) return;
+        if (src != InterfaceRLBase::INPUT_SOURCE::MACHINE_LISTENING &&
+            src != InterfaceRLBase::INPUT_SOURCE::COMBINED) return;
         union {
             XiasriAnalysis::parameters_t p;
             float v[XiasriAnalysis::kN_Params];

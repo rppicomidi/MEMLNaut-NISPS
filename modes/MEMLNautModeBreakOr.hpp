@@ -18,7 +18,7 @@
 
 class MEMLNautModeBreakOr {
 public:
-    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     USeqI2C i2cOut;
@@ -26,8 +26,9 @@ public:
     inline static BreakOrAudioApp<> audioAppBreakOr;
     std::array<String, BreakOrAudioApp<>::nVoiceSpaces> voiceSpaceList;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<BreakOrAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
 
     BreakOrAudioApp<>::SequencerClockModes clockMode = BreakOrAudioApp<>::INTERNAL;
 
@@ -51,7 +52,7 @@ public:
             focusManager.applyInPlace(p);
         };
 
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("breakor", "BreakOr");
         interfacePtr = make_non_owning(interface);
 

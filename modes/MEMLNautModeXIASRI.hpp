@@ -16,7 +16,7 @@
 
 class MEMLNautModeXIASRI {
 public:
-    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
     // Run NN inference at 100 Hz (vs the 200 Hz default) to thin out the core-0 memory
     // bursts that contend with the audio core's reverb accesses (SRAM bank contention).
@@ -25,8 +25,9 @@ public:
     // Focus groups: Delays, Network, Pitch, Mix, Reverb.
     static constexpr size_t kXIASRI_NGroups = 5;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<XIASRIAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
     MachineListeningMixin mlMixin;
 
     XIASRIAudioApp<> audioAppXIASRI;
@@ -36,7 +37,7 @@ public:
 
     void setupInterface() {
         interface.setup(kN_InputParams, XIASRIAudioApp<>::kN_Params);
-        interface.bindInterface(InterfaceRL::INPUT_MODES::MACHINE_LISTENING);
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::MACHINE_LISTENING);
         interface.setModeInfo("xiasri", "XIASRI");
 
         // Focus groups. NOTE: machine-listening mode — focus only steers active dims (which

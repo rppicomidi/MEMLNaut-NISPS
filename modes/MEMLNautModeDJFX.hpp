@@ -21,10 +21,11 @@ static constexpr size_t kDJFX_NGroups = 10;
 
 class MEMLNautModeDJFX {
 public:
-    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<DJFXAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
     MachineListeningMixin mlMixin;
 
     inline static DJFXAudioApp<> audioAppDJFX;
@@ -168,8 +169,8 @@ public:
     __force_inline void loop() {
         audioAppDJFX.loop();
         const auto src = interface.getInputSource();
-        if (src == InterfaceRL::INPUT_SOURCE::JOYSTICK_3D ||
-            src == InterfaceRL::INPUT_SOURCE::JOYSTICK_4D) {
+        if (src == InterfaceRLBase::INPUT_SOURCE::JOYSTICK_3D ||
+            src == InterfaceRLBase::INPUT_SOURCE::JOYSTICK_4D) {
             const auto& inputs = interface.getControlInput();
             const size_t n = interface.getActiveInputCount();
             float maxDev = 0.f;

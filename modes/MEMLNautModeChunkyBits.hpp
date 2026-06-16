@@ -12,11 +12,12 @@
 
 class MEMLNautModeChunkyBits {
 public:
-    constexpr static size_t kN_InputParams    = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams    = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<ChunkyBitsAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
     MachineListeningMixin mlMixin;
 
     inline static ChunkyBitsAudioApp<> audioAppChunkyBits;

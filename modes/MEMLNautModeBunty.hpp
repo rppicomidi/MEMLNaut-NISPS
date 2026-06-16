@@ -15,11 +15,12 @@
 
 class MEMLNautModeBunty {
 public:
-    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 32000;
     constexpr static size_t kN_SerialInputs = MEMLNAUT_ANALOG_INPUTS;
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<BuntyAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
 
     BuntyAudioApp<> audioAppBunty;
     std::array<String, BuntyAudioApp<>::nVoiceSpaces> voiceSpaceList;
@@ -37,7 +38,7 @@ public:
         // for (size_t i = 0; i < kN_SerialInputs; i++) serialChannels.push_back(i);
         // uartInput = std::make_shared<UARTInput>(serialChannels);
         // interface.bindUARTInput(uartInput, serialChannels);
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, JOYSTICK_IS_4D);
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, JOYSTICK_IS_4D);
         interface.setModeInfo("bunty", "Bunty");
         interfacePtr = make_non_owning(interface);
     }

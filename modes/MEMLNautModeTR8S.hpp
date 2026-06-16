@@ -79,14 +79,15 @@ static constexpr uint32_t kTR8SFocusFX = (1u << 11);
 
 class MEMLNautModeTR8S {
 public:
-    constexpr static size_t kN_InputParams    = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams    = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     inline static TRxSAudioApp<32> audioApp;
     std::array<String, TRxSAudioApp<32>::nVoiceSpaces> voiceSpaceList;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<TRxSAudioApp<32>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
 
     FocusManager<TRxSAudioApp<32>::kN_Params, kTR8SNumGroups> focusManager;
     uint32_t presentGroupsMask_ = 0;
@@ -109,7 +110,7 @@ public:
         // Repurpose rvx (RV_X1) from reward scale to the modulation fade amount.
         // Must be set before bindInterface(), which reads the override.
         interface.setRVX1Override([this](float v) { fadeAmount_ = v; interface.markInputDirty(); });
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("tr8s", "TR-8S");
         interfacePtr = make_non_owning(interface);
 

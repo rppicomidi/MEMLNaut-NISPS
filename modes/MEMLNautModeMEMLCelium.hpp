@@ -14,14 +14,16 @@
 
 class MEMLNautModeMEMLCelium {
 public:
-    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     inline static MEMLCeliumAudioApp<> audioAppMEMLCelium;
     std::array<String, MEMLCeliumAudioApp<>::nVoiceSpaces> voiceSpaceList;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    // Output width fixed at compile time -> static-memory mapping network.
+    using InterfaceRL_t = InterfaceRL<MEMLCeliumAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
 
     bool sequencerPlaying = false;
 
@@ -36,7 +38,7 @@ public:
             queue_try_add(&audioAppMEMLCelium.bpmControlQueue, &bpm);
         });
 
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("memlcelium", "MEMLCelium");
         interfacePtr = make_non_owning(interface);
 

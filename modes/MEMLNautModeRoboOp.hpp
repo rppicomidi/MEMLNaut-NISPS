@@ -12,20 +12,21 @@
 
 class MEMLNautModeRoboOp {
 public:
-    constexpr static size_t kN_InputParams     = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams     = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
     constexpr static size_t kN_Params         = 8;
 
     inline static TRxSAudioApp<kN_Params> audioApp;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
     std::shared_ptr<MIDIInOut> midi_interf;
     MachineListeningMixin mlMixin;
 
     void setupInterface() {
         interface.setup(kN_InputParams, kN_Params);
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("roboop", "RoboOp");
         interfacePtr = make_non_owning(interface);
     }

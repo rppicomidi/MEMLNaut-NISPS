@@ -2,7 +2,7 @@
 
 #define JOYSTICK_IS_4D true  
 #define MEMLNAUT_ANALOG_INPUTS 3 + (JOYSTICK_IS_4D ? 1 : 0)
-#define MEMLNAUT_INPUT_MODE InterfaceRL::INPUT_MODES::JOYSTICK
+#define MEMLNAUT_INPUT_MODE InterfaceRLBase::INPUT_MODES::JOYSTICK
 
 //hardware
 // #include "src/memllib/hardware/memlnaut/PSRAMManager.hpp"
@@ -13,7 +13,7 @@
 #include "src/memllib/hardware/FlashFS.hpp"
 #include "hardware/structs/bus_ctrl.h"
 #include <memory>
-
+  
 //sound
 #include "src/memllib/audio/AudioAppBase.hpp"
 
@@ -24,7 +24,7 @@
 
 //modes — uncomment exactly ONE to select the active mode:
 // #define MODE_PAFSYNTH
-// #define MODE_CHANNELSTRIPwew
+// #define MODE_CHANNELSTRIP
 // #define MODE_SOUNDANALYSISMIDI
 // #define MODE_XIASRI
 // #define MODE_BREAKOR
@@ -39,7 +39,7 @@
 // #define MODE_TR6S
 // #define MODE_TR8S
 // #define MODE_ROBOOP
-// #define MODE_DJFX 
+// #define MODE_DJFX
 // #define MODE_MOPHO
 // #define MODE_MICROQ
 // #define MODE_ERICA_FBANK

@@ -16,15 +16,16 @@
 
 class MEMLNautModeElysiamorfs {
 public:
-    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     USeqI2C i2cOut;
     inline static ElysiamorfAudioApp<> audioAppElysiamorfs;
     std::array<String, ElysiamorfAudioApp<>::nVoiceSpaces> voiceSpaceList;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<ElysiamorfAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
 
     ElysiamorfAudioApp<>::SequencerClockModes clockMode = ElysiamorfAudioApp<>::INTERNAL;
 
@@ -32,7 +33,7 @@ public:
 
     void setupInterface() {
         interface.setup(kN_InputParams, ElysiamorfAudioApp<>::kN_Params);
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("elysia", "Elysiamorfs");
         interfacePtr = make_non_owning(interface);
 

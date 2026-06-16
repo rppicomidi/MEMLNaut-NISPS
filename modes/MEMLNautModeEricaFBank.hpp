@@ -97,21 +97,22 @@ static constexpr uint32_t kEricaFBankFocusGLOB  = (1u << 5);  // Mix + spread
 
 class MEMLNautModeEricaFBank {
 public:
-    constexpr static size_t kN_InputParams     = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams     = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     inline static TRxSAudioApp<16> audioApp;
     std::array<String, TRxSAudioApp<16>::nVoiceSpaces> voiceSpaceList;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<TRxSAudioApp<16>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
 
     FocusManager<TRxSAudioApp<16>::kN_Params, 6> focusManager;
     uint32_t presentGroupsMask_ = 0;
 
     void setupInterface() {
         interface.setup(kN_InputParams, TRxSAudioApp<16>::kN_Params);
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("erica_fbank", "Resonant FBank");
         interfacePtr = make_non_owning(interface);
 

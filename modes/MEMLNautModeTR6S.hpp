@@ -67,21 +67,22 @@ static constexpr uint32_t kTR6SFocusFX = (1u << 6);
 
 class MEMLNautModeTR6S {
 public:
-    constexpr static size_t kN_InputParams    = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams    = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     inline static TRxSAudioApp<> audioApp;
     std::array<String, TRxSAudioApp<>::nVoiceSpaces> voiceSpaceList;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<TRxSAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
 
     FocusManager<TRxSAudioApp<>::kN_Params, 7> focusManager;
     uint32_t presentGroupsMask_ = 0;
 
     void setupInterface() {
         interface.setup(kN_InputParams, TRxSAudioApp<>::kN_Params);
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("tr6s", "TR-6S");
         interfacePtr = make_non_owning(interface);
 

@@ -17,14 +17,15 @@
 
 class MEMLNautModeBraykore {
 public:
-    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
 
     FocusManager<BraykoreAudioApp<>::kN_Params, 5> focusManager;
     inline static BraykoreAudioApp<> audioAppBraykore;
 
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<BraykoreAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
 
     bool sequencerPlaying = false;
 
@@ -46,7 +47,7 @@ public:
             focusManager.applyInPlace(p);
         };
 
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true);
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true);
         interface.setModeInfo("braykore", "Braykore");
         interfacePtr = make_non_owning(interface);
 

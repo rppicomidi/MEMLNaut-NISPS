@@ -10,17 +10,18 @@
 
 class MEMLNautModeChannelStrip {
 public:
-    constexpr static size_t kN_InputParams = InterfaceRL::kMaxNNInputs;
+    constexpr static size_t kN_InputParams = InterfaceRLBase::kMaxNNInputs;
     constexpr static size_t kDesiredSampleRate = 48000;
     ChannelStripAudioApp<> audioAppChannelStrip;
     std::array<String, ChannelStripAudioApp<>::nVoiceSpaces> voiceSpaceList;
-    InterfaceRL interface;
-    std::shared_ptr<InterfaceRL> interfacePtr;
+    using InterfaceRL_t = InterfaceRL<ChannelStripAudioApp<>::kN_Params>;
+    InterfaceRL_t interface;
+    std::shared_ptr<InterfaceRL_t> interfacePtr;
     std::shared_ptr<BlockSelectView> bypassView;
 
     void setupInterface() {
         interface.setup(kN_InputParams, ChannelStripAudioApp<>::kN_Params);
-        interface.bindInterface(InterfaceRL::INPUT_MODES::JOYSTICK, true); //set 4D joystick
+        interface.bindInterface(InterfaceRLBase::INPUT_MODES::JOYSTICK, true); //set 4D joystick
         interface.setModeInfo("chstrip", "ChannelStrip");
         interfacePtr = make_non_owning(interface);
     }
