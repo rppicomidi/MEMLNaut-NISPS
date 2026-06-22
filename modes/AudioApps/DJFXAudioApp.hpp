@@ -30,6 +30,11 @@ public:
 
     volatile uint32_t enableMask_{kFX_All};
 
+    // DJ Mode (default on): joystick position drives wet/dry, RVX1 drives the DJ filter.
+    // When off: RVX1 manually drives wet/dry and the filter is bypassed. Written by the
+    // UI (Core 0), read by audio (Core 1) — bool write/read is atomic on Cortex-M0+.
+    volatile bool djMode_{true};
+
     queue_t wetdryQueue;
     queue_t bpmQueue;
     queue_t rvx1Queue;
@@ -64,13 +69,19 @@ public:
     __attribute__((hot)) stereosample_t __force_inline Process(const stereosample_t x) override
     {
         const uint32_t en = enableMask_;
+        // Wet bus is mono (sums L+R); the dry path stays stereo (x.L/x.R passthrough).
+        // NB: with a mono source plugged into one input socket only, the dry output on
+        // the dead channel will be silent — that's a cabling issue, not a code bug.
         float mix = (x.L + x.R) * 0.5f;
 
-        // RVX1 DJ filter — on the mono input, before any FX
-        if (rvx1Val_ < 0.499f)
-            mix = rvLP_.play(mix);
-        else if (rvx1Val_ > 0.501f)
-            mix = rvHP_.play(mix);
+        // RVX1 DJ filter — on the mono input, before any FX. Only in DJ Mode; when DJ
+        // Mode is off, RVX1 manually controls wet/dry instead, with no filtering.
+        if (djMode_) {
+            if (rvx1Val_ < 0.499f)
+                mix = rvLP_.play(mix);
+            else if (rvx1Val_ > 0.501f)
+                mix = rvHP_.play(mix);
+        }
 
         // Tone shapers — at the head so they colour the source before any time-based FX
         if ((en & kFX_Downsample) && downsampleMix_ > 0.f)
@@ -129,7 +140,7 @@ public:
             wetR = mix * rDry + revR * rWet;
         }
 
-        // Wet/dry crossfade — stereo wet added to stereo dry
+        // Wet/dry crossfade — stereo wet added to stereo dry (equal power).
         const float dryAmt = sqrtf(1.f - wetdry_mix_);
         const float wetAmt = sqrtf(wetdry_mix_);
         return { wetL * wetAmt + x.L * dryAmt, wetR * wetAmt + x.R * dryAmt };
@@ -157,7 +168,13 @@ public:
         return (raw > 0.3f) ? (raw - 0.3f) * (1.f / 0.7f) : 0.f;
     }
 
-    __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
+    // Real-time controls (wet/dry, BPM, RVX1 filter) arrive on their own queues from
+    // Core 0 and must update every audio-core iteration — NOT slaved to the NN action
+    // cadence. ProcessParams() only runs when a new NN action is produced, so when the
+    // joystick is still (e.g. resting at centre) it never runs; draining these queues
+    // there would freeze wet/dry at its last in-motion value. pollControls() is called
+    // unconditionally from loop() so the wet/dry envelope always tracks the stick.
+    void pollControls()
     {
         {
             float v;
@@ -184,7 +201,17 @@ public:
                 }
             }
         }
+    }
 
+    // Runs every Core 1 iteration (loop1), independent of NN action generation.
+    void loop() override
+    {
+        pollControls();                    // always: real-time wet/dry, BPM, RVX1
+        AudioAppBase<NPARAMS>::loop();      // FX params only when a new NN action arrives
+    }
+
+    __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
+    {
         const float beatMs      = 60000.f / bpm_;
         const float beatSamples = sampleRate_ * 60.f / bpm_;
 

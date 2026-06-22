@@ -7,6 +7,8 @@
 #include "../src/memllib/hardware/memlnaut/MEMLNaut.hpp"
 #include "../src/memllib/audio/FocusManager.hpp"
 #include "../src/memllib/hardware/memlnaut/display/BlockSelectView.hpp"
+#include "../src/memllib/hardware/memlnaut/display/VUMeterView.hpp"
+#include "../VUMeter.hpp"
 #include "MEMLNautMode.hpp"
 #include <memory>
 #include <array>
@@ -43,7 +45,10 @@ public:
 
         interface.setup(kN_InputParams, DJFXAudioApp<>::kN_Params);
         interface.setRVX1Override([this](float value) {
-            audioAppDJFX.setRVX1Queued(value);
+            if (audioAppDJFX.djMode_)
+                audioAppDJFX.setRVX1Queued(value);    // DJ Mode: RVX1 = DJ filter sweep
+            else
+                audioAppDJFX.setWetDryQueued(value);  // Manual: RVX1 = wet/dry mix
         });
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);
         interface.setModeInfo("djfx", "DJFX");
@@ -158,7 +163,28 @@ public:
         interface.addInputSourceView(false);  // no MIDI CC Out screen for this mode
 
         auto enableView = std::make_shared<DJFXEnableView>("FX Enable", &audioAppDJFX.enableMask_);
-        MEMLNaut::Instance()->disp->AddView(enableView);
+        MEMLNaut::Instance()->disp->InsertViewAfter(focusView, enableView);
+
+        // VU meters (In L/R, Out L/R) — sits right after FX Enable. The view arms the
+        // audio-core measurement only while it is on screen.
+        auto vuView = std::make_shared<VUMeterView>(
+            "VU", std::vector<String>{ "In L", "In R", "Out L", "Out R" },
+            VUMeter::levels,
+            [](bool a) { VUMeter::active = a; });
+        MEMLNaut::Instance()->disp->InsertViewAfter(enableView, vuView);
+
+        // Options screen — single toggle for DJ Mode. On (highlighted): joystick drives
+        // wet/dry, RVX1 = DJ filter. Off: RVX1 drives wet/dry, no filtering.
+        auto optionsView = std::make_shared<BlockSelectView>(
+            "Options", TFT_YELLOW, 1, 95, 70, TFT_BLACK,
+            std::vector<String>{ "DJ Mode" },
+            TFT_BLUE, 2);
+        optionsView->SetOnSelectCallback([this, optionsView](size_t id) {
+            audioAppDJFX.djMode_ = !audioAppDJFX.djMode_;
+            optionsView->toggleAlt(id - 1);
+        });
+        optionsView->setAltColour(0, audioAppDJFX.djMode_);  // reflect initial state
+        MEMLNaut::Instance()->disp->AddView(optionsView);
     };
 
     void setupAudio(float sample_rate) {
@@ -169,16 +195,27 @@ public:
     __force_inline void loop() {
         audioAppDJFX.loop();
         const auto src = interface.getInputSource();
-        if (src == InterfaceRLBase::INPUT_SOURCE::JOYSTICK_3D ||
-            src == InterfaceRLBase::INPUT_SOURCE::JOYSTICK_4D) {
+        // Joystick drives wet/dry only in DJ Mode. When off, RVX1 controls wet/dry
+        // manually (see setRVX1Override) and the stick is exploration-only.
+        if (audioAppDJFX.djMode_ &&
+            (src == InterfaceRLBase::INPUT_SOURCE::JOYSTICK_3D ||
+             src == InterfaceRLBase::INPUT_SOURCE::JOYSTICK_4D)) {
+            // Wet/dry envelope follows how far the stick is pushed from centre:
+            // dry at rest, fading to 100% wet near full deflection. Only the two
+            // spring-centred axes (X, Y) drive it — JOY_Z rests off-centre on this
+            // hardware and would otherwise pin the mix fully wet. All axes still
+            // feed the NN exploration; only the wet amount is decoupled from Z.
+            static float kWetDeadzone = 0.05f;  // SRAM: keep solidly dry at rest
+            static float kWetGain     = 2.3f;   // hit 100% wet just before the rail
             const auto& inputs = interface.getControlInput();
-            const size_t n = interface.getActiveInputCount();
+            const size_t n = inputs.size() < 2 ? inputs.size() : 2;
             float maxDev = 0.f;
-            for (size_t i = 0; i < n && i < inputs.size(); ++i) {
+            for (size_t i = 0; i < n; ++i) {
                 const float d = fabsf(inputs[i] - 0.5f);
                 if (d > maxDev) maxDev = d;
             }
-            audioAppDJFX.setWetDryQueued(fminf(maxDev * 2.f, 1.f));
+            const float dev = fmaxf(0.f, maxDev - kWetDeadzone);
+            audioAppDJFX.setWetDryQueued(fminf(dev * kWetGain, 1.f));
         }
     }
 

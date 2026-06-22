@@ -73,47 +73,6 @@ public:
 
         smoother.Process(neuralNetOutputs.data(), smoothParams.data());
 
-        // float dl1mix = smoothParams[0] * 0.6f;
-        // float dl2mix = smoothParams[1] * 0.6f;
-        // float dl3mix = smoothParams[2] * 0.8f;
-        // float ymix = smoothParams[12] * 1.0f;
-        
-        // float allp1fb = smoothParams[3] * 0.96f;
-        // float allp2fb = smoothParams[4] * 0.96f;
-        // float allp3fb = smoothParams[5] * 0.96f;
-
-        // float comb1fb = (smoothParams[6] * 0.95f);
-        // float comb2fb = (smoothParams[7] * 0.95f);
-        // float comb3fb = (smoothParams[8] * 0.95f);
-
-        // float dl1fb = (smoothParams[9] * 0.95f);
-        // float dl2fb = (smoothParams[10] * 0.95f);
-        // float dl3fb = (smoothParams[11] * 0.95f);
-
-        // float y = dcb.play(mix, 0.99f) * 3.f;
-
-        // float y1 = allp1.allpass(y, 73, allp1fb);
-        // y1 = comb1.combfb(y1, 255, comb1fb);
-
-        // float y2 = allp2.allpass(y, 987, allp2fb);
-        // y2 = comb2.combfb(y2, 1616, comb2fb);
-
-        // float y3 = comb3.combfb(y3, 847, comb3fb);
-        // y3 = allp3.allpass(y, 707, allp3fb);
-
-        // y = y1 + y2 + y3;
-
-        // float d1 = (dl1.play(y, 7000, dl1fb) * dl1mix);
-        // float d2 = (dl2.play(y, 18000, dl2fb) * dl2mix);
-        // float d3 = (dl3.play(y, 2399, dl3fb) * dl3mix);
-
-
-        // y = (y * ymix) + d1 + d2 + d3;
-
-        // y = y * 1.9f;
-
-        // y = tanhf(y);
-
         float dl1mix = smoothParams[0] * 0.4f;
         float dl2mix = smoothParams[1] * 0.4f;
         float dl3mix = smoothParams[2] * 0.8f;
@@ -176,7 +135,9 @@ public:
             float d4 = (dl4.play(y, 15873, dl4fb) * dl4mix);
 
             y = y + d1 + d2 + d3;
+            y = dcb2.play(y, 0.99f);
         }
+
 
         // Mix dry
         y = (y * wetdry_mix_) + (mix * (1.f - wetdry_mix_));
@@ -192,9 +153,26 @@ public:
             // convex crossfade stays a clean ≤ ±1.
             const float rev = reverb_.processMono(y * 0.5f);
             const float out = y * (1.f - revWet) + rev * revWet;
-            return { out, out };
+            // return { out, out };
+            y = out;
         }
+        y = bassCut2.play(bassCut.play(y));
+        // Final safety limiter. Both the reverb crossfade and the resonant 60 Hz high-passes
+        // run after the tanh and can overshoot ±1; this cubic soft-clip catches that overshoot
+        // so the codec never hard-clips, while leaving in-range (|y|<1) signals untouched.
+        y = softLimit(y);
         return { y, y };
+    }
+
+    // Cheap cubic soft-clip (no divide): ~unity for |x|<1, smoothly reaches ±1 at ±1.5,
+    // hard-limits beyond. Mirrors ReverbI16::softLimit.
+    static float __force_inline softLimit(float x)
+    {
+        static float kLim = 1.5f;       // SRAM (non-const static) to avoid flash literal reads
+        static float kCub = 0.148148f;  // 4/27
+        if (x >  kLim) return  1.f;
+        if (x < -kLim) return -1.f;
+        return x - x * x * x * kCub;
     }
 
     void Setup(float sample_rate, std::shared_ptr<InterfaceBase> interface) override
@@ -203,6 +181,9 @@ public:
         maxiSettings::sampleRate = sample_rate;
         pitchshifter_.Init(sample_rate);
         reverb_.setup(sample_rate);
+        bassCut.set(  maxiBiquad::filterTypes::HIGHPASS, 60.f, 0.707f, 0.f);
+        bassCut2.set( maxiBiquad::filterTypes::HIGHPASS, 60.f, 0.707f, 0.f);
+
     }
 
     __attribute__((always_inline)) void ProcessParams(const std::array<float, NPARAMS>& params)
@@ -261,7 +242,9 @@ protected:
 
 
 
-    maxiDCBlocker dcb;
+    maxiDCBlocker dcb, dcb2;
+    maxiBiquad bassCut;
+    maxiBiquad bassCut2;
 
     daisysp::PitchShifter pitchshifter_;
     float pitchshifter_mix_{0.5f};

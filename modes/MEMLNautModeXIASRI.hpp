@@ -12,6 +12,8 @@
 #include "../src/memllib/audio/FocusManager.hpp"
 #include "../src/memllib/hardware/memlnaut/MEMLNaut.hpp"
 #include "../src/memllib/hardware/memlnaut/display/BlockSelectView.hpp"
+#include "../src/memllib/hardware/memlnaut/display/VUMeterView.hpp"
+#include "../VUMeter.hpp"
 
 
 class MEMLNautModeXIASRI {
@@ -97,6 +99,14 @@ public:
         for (size_t i = 0; i < 3; ++i)
             enableView->setAltColour(i, (audioAppXIASRI.enableMask_ >> i) & 1u);
         MEMLNaut::Instance()->disp->AddView(enableView);
+
+        // VU meters (In L/R, Out L/R) — sits right after FX Enable. The view arms the
+        // audio-core measurement only while it is on screen.
+        auto vuView = std::make_shared<VUMeterView>(
+            "VU", std::vector<String>{ "In L", "In R", "Out L", "Out R" },
+            VUMeter::levels,
+            [](bool a) { VUMeter::active = a; });
+        MEMLNaut::Instance()->disp->InsertViewAfter(enableView, vuView);
 
         // Mark which NN output dims are live based on the focused groups.
         auto updateActiveDims = [this]() {
