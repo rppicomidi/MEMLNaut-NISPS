@@ -51,7 +51,7 @@ public:
                 audioAppDJFX.setWetDryQueued(value);  // Manual: RVX1 = wet/dry mix
         });
         interface.bindInterface(MEMLNAUT_INPUT_MODE, JOYSTICK_IS_4D);
-        interface.setModeInfo("djfx", "DJFX");
+        interface.setModeInfo("djfx", "LiveFX");  // "djfx" kept = SD preset dir (back-compat)
 
         interface.setExtraSaveCallback([this]() -> std::vector<uint8_t> {
             std::vector<uint8_t> data(4);
@@ -117,7 +117,7 @@ public:
     }
 
     String getHelpTitle() {
-        return "DJ FX Mode";
+        return "LiveFX Mode";
     }
 
     __force_inline stereosample_t process(stereosample_t x) {
