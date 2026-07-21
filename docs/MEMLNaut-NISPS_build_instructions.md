@@ -25,7 +25,7 @@ cd MEMLNaut-NISPS
 git submodule update --recursive --init
 ```
 
-## Install RP2350 Arduino Core
+## Install the RP2350 Arduino Core
 On PC and Linux, access the menu
 File->Preferences...
 On Mac systems, the menu is under
@@ -43,8 +43,10 @@ Raspberry Pi Pico/RP2040/RP2350 core should be listed. Install it.
 ## Add C++20 compiler support to the core configuration
 By default, the 5.70 version of this core supports C++17. The MEMLNaut-NISPS sketch requires C++20 or
 later to build. You need to modify the `platform.txt` file for the Arduino core.
-For example, on a Linux system, the core is stored in 
-`${HOME}/.arduino15/packages/rp2040/hardware/rp2040/5.7.0`
+For example, on a Linux system, the core is stored in
+```
+${HOME}/.arduino15/packages/rp2040/hardware/rp2040/5.7.0
+```
 Use your favorite editor to open the `platform.txt` file and find the line in the file that reads
 
 ```
@@ -65,14 +67,32 @@ with newer versions, consider rolling back to the library versions referenced he
 
 ## Configure the TFT_eSPI library
 Copy the file
-`${ARDUINO_SKETCH_DIR}/MEMNaut-NISPS/src/memllib/hardware/memlnaut/Setup9999_MEMLNaut.h.renameme`
-to the directory `${ARDUINO_LIBRARY_DIR}/TFT_eSPI/User_Setups/` and rename it to
-`${ARDUINO_LIBRARY_DIR}/TFT_eSPI/User_Setups/Setup9999_MEMLNaut.h`
+```
+${ARDUINO_SKETCH_DIR}/MEMNaut-NISPS/src/memllib/hardware/memlnaut/Setup9999_MEMLNaut.h.renameme
+```
+to the directory 
+
+```
+${ARDUINO_LIBRARY_DIR}/TFT_eSPI/User_Setups/
+```
+
+and rename it to
+
+```
+${ARDUINO_LIBRARY_DIR}/TFT_eSPI/User_Setups/Setup9999_MEMLNaut.h
+```
 
 In your favorite editor, open the file `${ARDUINO_LIBRARY_DIR}/TFT_eSPI/User_Setup_Select.h`.
 
-Comment out the line `#include <User_Setup.h>           // Default setup is root library folder`
-and add the line `#include <User_Setups/Setup9999_MEMLNaut.h>`. Make sure there is only
+Comment out the line
+```
+#include <User_Setup.h>           // Default setup is root library folder`
+```
+and add the line 
+```
+#include <User_Setups/Setup9999_MEMLNaut.h>
+```
+Make sure there is only
 the desired `*_Setup.h` file included and all others are commented out.
 
 If you update the `TFT_eSPI` library, you will likely have to do this step over again.
@@ -83,13 +103,16 @@ In the Arduino IDE, use the File->Open menu to open the `MEMLNaut-NISPS.ino` ske
 ## Select the correct board target
 Under the Tools->Board: menu, select "Raspberry Pi Pico/2040/2350->Solder Party RP2350 Stamp XL"
 
-## Select the Optimization Mode
+## Select the Build Optimization
 Optimize this code as much as possible. Use the Menu item Tools->Optimize:"Optimize Even More (-O3)"
 
 ## Choose the mode you wish to build
 You can glean information about the various modes [here](https://musicallyembodiedml.github.io/posts/).
 
-In the Arduino IDE, find the line in the MEMLNaut-NISPS.ino file that reads `//modes — uncomment exactly ONE to select the active mode:`
+In the Arduino IDE, find the line in the `MEMLNaut-NISPS.ino` file that reads
+```
+//modes — uncomment exactly ONE to select the active mode:
+```
 Under that comment are a list of operating mode definitions. Uncomment the `#define` line for the mode you want and comment out the rest.
 
 ## Start the build
@@ -97,12 +120,12 @@ Click the Verify checkmark in the Arduino IDE. The code should compile, perhaps 
 See the next step if you are using an ARM-based Mac and the build failed.
 
 ## How to fix a build failure on an ARM-based Mac that is not running Rosetta
-If you try to build on my ARM-based Macbook, the build may fail because the Arduino built-in ctags tool
+If you try to build on an ARM-based Macbook, the build may fail because the Arduino built-in ctags tool
 is built for Intel-based Macs only. Installing Rosetta will likely fix this issue, but Apple will stop
 supporting Rosetta soon. You may not want to
-install it. Fortunately, A [post](https://forum.arduino.cc/t/how-to-avoid-installing-rosetta-on-an-apple-silicon-mac/1346623#p-8042292-step-2-install-ctags-2)
+install it. Fortunately, a [post](https://forum.arduino.cc/t/how-to-avoid-installing-rosetta-on-an-apple-silicon-mac/1346623#p-8042292-step-2-install-ctags-2)
 contains a fix that does not require Rosetta. Use the following steps, where `${ARDUINO_PATCH_DIR}`
-is the directory that to use for cloning the ctags source code.
+is the directory you use for cloning the ctags source code.
 
 1. If you do not have the Xcode command line tools installed, open a terminal window and run this command
 ```
@@ -142,7 +165,10 @@ Arduino will release an IDE with built-in tools compiled for ARM-based Macs. Hop
 soon so that this step will not be required.
 
 ## Export the .uf2 file and program the MEMLNaut
-In the Arduino IDE, use the menu Sketch->Export Compiled Binary. The IDE will create the `build/rp2040.rp2040.solderparty_rp2350_stamp_xl/`
+In the Arduino IDE, use the menu Sketch->Export Compiled Binary. The IDE will create the
+```
+build/rp2040.rp2040.solderparty_rp2350_stamp_xl/
+```
 directory. The directory contains the build output, including the `MEMLNaut-NISPS.ino.uf2` file. You may program this .uf2
 file to the MEMLNaut hardware using the RP2350's bootloader:
 
